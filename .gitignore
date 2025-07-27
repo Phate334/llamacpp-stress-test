@@ -1,0 +1,23 @@
+# Test outputs
+results/
+*.jsonl
+stress_test_*.jsonl
+meta_*.json
+
+# Log files
+*.log
+logs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
