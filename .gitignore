@@ -1,30 +1,8 @@
-# Build directories
-build/
-bin/
-obj/
-
-# Compiled binaries and libraries
-*.exe
-*.dll
-*.so
-*.dylib
-*.a
-*.lib
-
-# CMake generated files
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
-
 # Test outputs
-*.json
-*.csv
-*.md
-stress_test*
-test_*
-example*
+results/
+*.jsonl
+stress_test_*.jsonl
+meta_*.json
 
 # Log files
 *.log
@@ -43,12 +21,3 @@ tmp/
 temp/
 *.tmp
 *.temp
-
-# Core dumps
-core
-core.*
-*.core
-
-# Configuration files (except examples)
-*.conf
-!example_config.conf
