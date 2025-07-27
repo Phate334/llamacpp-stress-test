@@ -1,45 +1,92 @@
 #!/bin/bash
 
 # GPU Stress Test Script using batched-bench
-# Based on issue #1 requirements - test GPU capability using batched-bench tool
+# Compatible with llama.cpp tools/llama-batched-bench parameters
+# Based on issue #3 requirements - support original batched-bench parameters
 
 set -euo pipefail
 
 # Default values
 VERBOSE=false
 OUTPUT_DIR="./results"
+
+# Batched-bench compatible parameters with defaults
 CONTEXT_LENGTH=2048
+BATCH_SIZE=512
+UBATCH_SIZE=512
+GPU_LAYERS=0
+MAIN_GPU=0
+THREADS=""
+THREADS_BATCH=""
+SPLIT_MODE=""
+TENSOR_SPLIT=""
+FLASH_ATTN=false
+
+# Stress test specific parameters (for compatibility mode)
 MAX_BATCH_SIZE=512
 STEP_SIZE=16
 TEST_DURATION=30
+COMPATIBILITY_MODE=false
+
+# Arrays to store batched-bench specific parameters
+declare -a NPP_VALUES=()
+declare -a NTG_VALUES=()
+declare -a NPL_VALUES=()
+declare -a EXTRA_ARGS=()
+PROMPT_SHARED=false
+OUTPUT_FORMAT="md"
 
 # Help function
 show_help() {
     cat << EOF
 Usage: $0 [OPTIONS] MODEL_NAME
 
-GPU stress testing script using llama.cpp batched-bench tool.
+GPU stress testing script compatible with llama.cpp batched-bench parameters.
+Executes batched-bench and saves results in JSONL format for analysis.
 
-OPTIONS:
+ORIGINAL BATCHED-BENCH OPTIONS:
+    -m, --model FILE        Model path (or use MODEL_NAME positional argument)
+    -c, --ctx-size N        Context size (default: 2048)
+    -b, --batch-size N      Logical batch size (default: 512)
+    -ub, --ubatch-size N    Physical batch size (default: 512)
+    -ngl, --n-gpu-layers N  Number of GPU layers to offload (default: 0)
+    -mg, --main-gpu N       Main GPU device (default: 0)
+    -t, --threads N         Number of threads for generation
+    -tb, --threads-batch N  Number of threads for batch processing
+    -sm, --split-mode MODE  Split mode: none, layer, row
+    -ts, --tensor-split N,N Tensor split ratios
+    -fa, --flash-attn       Enable flash attention
+    -npp VALUES             Prompt tokens per sequence (comma-separated)
+    -ntg VALUES             Tokens to generate per sequence (comma-separated)
+    -npl VALUES             Number of parallel sequences (comma-separated)
+    -pps                    Prompt is shared across sequences
+    --output-format FORMAT  Output format: md or jsonl
+
+WRAPPER-SPECIFIC OPTIONS:
     -h, --help              Show this help message
     -v, --verbose           Enable verbose output
     -o, --output DIR        Output directory for results (default: ./results)
-    -c, --context LENGTH    Context length (default: 2048)
-    -m, --max-batch SIZE    Maximum batch size to test (default: 512)
-    -s, --step SIZE         Step size for batch increments (default: 16)
-    -d, --duration SECONDS  Test duration per batch size (default: 30)
+    --stress-test           Enable stress test mode (legacy compatibility)
+    --max-batch SIZE        Maximum batch size for stress testing (default: 512)
+    --step SIZE             Step size for batch increments (default: 16)
+    --duration SECONDS      Test duration per batch size (default: 30)
 
 ENVIRONMENT VARIABLES:
     BATCHED_BENCH_PATH      Path to batched-bench executable (required)
     MODEL_PATH              Path to model files directory (required)
 
 EXAMPLES:
-    # Basic usage
-    BATCHED_BENCH_PATH=/path/to/batched-bench MODEL_PATH=/models $0 model.gguf
-    
-    # With custom parameters
+    # Basic batched-bench usage with JSONL output
     BATCHED_BENCH_PATH=/path/to/batched-bench MODEL_PATH=/models \\
-        $0 -c 4096 -m 256 -s 8 -d 60 model.gguf
+        $0 -c 2048 -b 512 -ub 256 -ngl 99 model.gguf
+
+    # Stress test mode (legacy)
+    BATCHED_BENCH_PATH=/path/to/batched-bench MODEL_PATH=/models \\
+        $0 --stress-test --max-batch 256 --step 8 --duration 60 model.gguf
+    
+    # With specific test configurations
+    BATCHED_BENCH_PATH=/path/to/batched-bench MODEL_PATH=/models \\
+        $0 -npp 128,256,512 -ntg 128,256 -npl 1,2,4,8 model.gguf
 
 EOF
 }
@@ -60,29 +107,114 @@ parse_args() {
                 OUTPUT_DIR="$2"
                 shift 2
                 ;;
-            -c|--context)
+            # Batched-bench compatible parameters
+            -m|--model)
+                # Handle model parameter (but prefer positional argument)
+                if [[ -z "${MODEL_NAME:-}" ]]; then
+                    MODEL_NAME="$2"
+                fi
+                shift 2
+                ;;
+            -c|--ctx-size)
                 CONTEXT_LENGTH="$2"
                 shift 2
                 ;;
-            -m|--max-batch)
+            -b|--batch-size)
+                BATCH_SIZE="$2"
+                shift 2
+                ;;
+            -ub|--ubatch-size)
+                UBATCH_SIZE="$2"
+                shift 2
+                ;;
+            -ngl|--n-gpu-layers)
+                GPU_LAYERS="$2"
+                shift 2
+                ;;
+            -mg|--main-gpu)
+                MAIN_GPU="$2"
+                shift 2
+                ;;
+            -t|--threads)
+                THREADS="$2"
+                shift 2
+                ;;
+            -tb|--threads-batch)
+                THREADS_BATCH="$2"
+                shift 2
+                ;;
+            -sm|--split-mode)
+                SPLIT_MODE="$2"
+                shift 2
+                ;;
+            -ts|--tensor-split)
+                TENSOR_SPLIT="$2"
+                shift 2
+                ;;
+            -fa|--flash-attn)
+                FLASH_ATTN=true
+                shift
+                ;;
+            -npp)
+                IFS=',' read -ra NPP_VALUES <<< "$2"
+                shift 2
+                ;;
+            -ntg)
+                IFS=',' read -ra NTG_VALUES <<< "$2"
+                shift 2
+                ;;
+            -npl)
+                IFS=',' read -ra NPL_VALUES <<< "$2"
+                shift 2
+                ;;
+            -pps)
+                PROMPT_SHARED=true
+                shift
+                ;;
+            --output-format)
+                OUTPUT_FORMAT="$2"
+                shift 2
+                ;;
+            # Stress test mode (legacy compatibility)
+            --stress-test)
+                COMPATIBILITY_MODE=true
+                shift
+                ;;
+            --max-batch)
                 MAX_BATCH_SIZE="$2"
                 shift 2
                 ;;
-            -s|--step)
+            --step)
                 STEP_SIZE="$2"
                 shift 2
                 ;;
-            -d|--duration)
+            --duration|-d)
                 TEST_DURATION="$2"
                 shift 2
                 ;;
+            # Legacy compatibility aliases
+            --context)
+                CONTEXT_LENGTH="$2"
+                shift 2
+                ;;
+            -s)
+                STEP_SIZE="$2"
+                shift 2
+                ;;
+            # Pass through other arguments
             -*)
-                echo "Error: Unknown option $1" >&2
-                show_help
-                exit 1
+                EXTRA_ARGS+=("$1")
+                if [[ $# -gt 1 && ! "$2" =~ ^- ]]; then
+                    EXTRA_ARGS+=("$2")
+                    shift 2
+                else
+                    shift
+                fi
                 ;;
             *)
-                MODEL_NAME="$1"
+                if [[ -z "${MODEL_NAME:-}" ]]; then
+                    MODEL_NAME="$1"
+                fi
                 shift
                 ;;
         esac
@@ -134,6 +266,23 @@ get_hardware_info() {
         "test_parameters": {
             "model": "$MODEL_NAME",
             "context_length": $CONTEXT_LENGTH,
+            "batch_size": $BATCH_SIZE,
+            "ubatch_size": $UBATCH_SIZE,
+            "gpu_layers": $GPU_LAYERS,
+            "main_gpu": $MAIN_GPU,
+            "threads": "${THREADS:-auto}",
+            "threads_batch": "${THREADS_BATCH:-auto}",
+            "split_mode": "${SPLIT_MODE:-default}",
+            "tensor_split": "${TENSOR_SPLIT:-default}",
+            "flash_attn": $FLASH_ATTN,
+            "prompt_shared": $PROMPT_SHARED,
+            "output_format": "$OUTPUT_FORMAT",
+            "compatibility_mode": $COMPATIBILITY_MODE,
+            "npp_values": [$(IFS=','; echo "${NPP_VALUES[*]}" | sed 's/,/", "/g' | sed 's/^/"/;s/$/"/')],
+            "ntg_values": [$(IFS=','; echo "${NTG_VALUES[*]}" | sed 's/,/", "/g' | sed 's/^/"/;s/$/"/')],
+            "npl_values": [$(IFS=','; echo "${NPL_VALUES[*]}" | sed 's/,/", "/g' | sed 's/^/"/;s/$/"/')]
+        },
+        "legacy_stress_test_parameters": {
             "max_batch_size": $MAX_BATCH_SIZE,
             "step_size": $STEP_SIZE,
             "test_duration": $TEST_DURATION
@@ -148,7 +297,8 @@ get_hardware_info() {
         "environment": {
             "batched_bench_path": "$BATCHED_BENCH_PATH",
             "model_path": "$MODEL_PATH",
-            "cuda_visible_devices": "${CUDA_VISIBLE_DEVICES:-all}"
+            "cuda_visible_devices": "${CUDA_VISIBLE_DEVICES:-all}",
+            "batched_bench_command": "$(build_batched_bench_command)"
         }
     }
 }
@@ -162,69 +312,127 @@ log() {
     fi
 }
 
-# Run single batch test
-run_batch_test() {
-    local batch_size=$1
+# Build batched-bench command with all parameters
+build_batched_bench_command() {
     local model_file="$MODEL_PATH/$MODEL_NAME"
+    local cmd=("$BATCHED_BENCH_PATH")
     
-    log "Testing batch size: $batch_size"
+    # Core parameters
+    cmd+=("-m" "$model_file")
+    cmd+=("-c" "$CONTEXT_LENGTH")
+    cmd+=("-b" "$BATCH_SIZE")
+    cmd+=("-ub" "$UBATCH_SIZE")
+    
+    # GPU parameters
+    if [[ $GPU_LAYERS -gt 0 ]]; then
+        cmd+=("-ngl" "$GPU_LAYERS")
+    fi
+    if [[ $MAIN_GPU -gt 0 ]]; then
+        cmd+=("-mg" "$MAIN_GPU")
+    fi
+    
+    # Threading parameters
+    if [[ -n "$THREADS" ]]; then
+        cmd+=("-t" "$THREADS")
+    fi
+    if [[ -n "$THREADS_BATCH" ]]; then
+        cmd+=("-tb" "$THREADS_BATCH")
+    fi
+    
+    # Model parameters
+    if [[ -n "$SPLIT_MODE" ]]; then
+        cmd+=("-sm" "$SPLIT_MODE")
+    fi
+    if [[ -n "$TENSOR_SPLIT" ]]; then
+        cmd+=("-ts" "$TENSOR_SPLIT")
+    fi
+    if [[ "$FLASH_ATTN" == "true" ]]; then
+        cmd+=("-fa")
+    fi
+    
+    # Benchmark parameters
+    if [[ ${#NPP_VALUES[@]} -gt 0 ]]; then
+        local npp_str=$(IFS=','; echo "${NPP_VALUES[*]}")
+        cmd+=("-npp" "$npp_str")
+    fi
+    if [[ ${#NTG_VALUES[@]} -gt 0 ]]; then
+        local ntg_str=$(IFS=','; echo "${NTG_VALUES[*]}")
+        cmd+=("-ntg" "$ntg_str")
+    fi
+    if [[ ${#NPL_VALUES[@]} -gt 0 ]]; then
+        local npl_str=$(IFS=','; echo "${NPL_VALUES[*]}")
+        cmd+=("-npl" "$npl_str")
+    fi
+    if [[ "$PROMPT_SHARED" == "true" ]]; then
+        cmd+=("-pps")
+    fi
+    
+    # Always force JSONL output for parsing
+    cmd+=("--output-format" "jsonl")
+    
+    # Add any extra arguments
+    if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
+        cmd+=("${EXTRA_ARGS[@]}")
+    fi
+    
+    echo "${cmd[@]}"
+}
+
+# Run batched-bench with direct parameter pass-through
+run_batched_bench() {
+    local cmd_array=($(build_batched_bench_command))
+    
+    log "Running batched-bench with parameters: ${cmd_array[*]}"
     
     # Run batched-bench and capture output
     local start_time=$(date +%s.%N)
     local output
     local exit_code=0
     
-    # Construct batched-bench command
-    local cmd="$BATCHED_BENCH_PATH -m '$model_file' -c $CONTEXT_LENGTH -b $batch_size -ub $batch_size"
-    
-    if output=$(timeout ${TEST_DURATION}s bash -c "$cmd" 2>&1); then
+    if output=$("${cmd_array[@]}" 2>&1); then
         local end_time=$(date +%s.%N)
         local duration=$(echo "$end_time - $start_time" | bc -l)
         
-        # Parse output for performance metrics
-        local tokens_per_second=$(echo "$output" | grep -oP 'tokens per second: \K[\d.]+' || echo "0")
-        local prompt_eval_time=$(echo "$output" | grep -oP 'prompt eval time = \K[\d.]+' || echo "0")
-        local eval_time=$(echo "$output" | grep -oP 'eval time = \K[\d.]+' || echo "0")
+        log "Batched-bench completed successfully in ${duration}s"
         
-        # Output JSONL format
-        cat << EOF
-{"batch_size": $batch_size, "status": "success", "duration": $duration, "tokens_per_second": $tokens_per_second, "prompt_eval_time": $prompt_eval_time, "eval_time": $eval_time, "timestamp": "$(date -Iseconds)"}
-EOF
+        # Parse and output JSONL (batched-bench already outputs JSONL)
+        echo "$output"
+        return 0
     else
         exit_code=$?
         local end_time=$(date +%s.%N)
         local duration=$(echo "$end_time - $start_time" | bc -l)
         
-        # Output error JSONL
-        cat << EOF
-{"batch_size": $batch_size, "status": "error", "exit_code": $exit_code, "duration": $duration, "error": "$(echo "$output" | head -3 | tr '\n' ' ' | sed 's/"/\\"/g')", "timestamp": "$(date -Iseconds)"}
-EOF
+        log "Batched-bench failed with exit code $exit_code after ${duration}s"
         
-        log "Batch size $batch_size failed with exit code $exit_code"
+        # Output error in JSONL format
+        cat << EOF
+{"status": "error", "exit_code": $exit_code, "duration": $duration, "error": "$(echo "$output" | head -5 | tr '\n' ' ' | sed 's/"/\\"/g')", "timestamp": "$(date -Iseconds)"}
+EOF
         return $exit_code
     fi
 }
 
-# Find critical batch size
-find_critical_point() {
-    local critical_point=0
-    local consecutive_failures=0
+# Legacy stress test mode for backward compatibility  
+run_stress_test() {
+    log "Running in legacy stress test mode"
     
-    for ((batch_size = STEP_SIZE; batch_size <= MAX_BATCH_SIZE; batch_size += STEP_SIZE)); do
-        if run_batch_test "$batch_size"; then
-            critical_point=$batch_size
-            consecutive_failures=0
-        else
-            ((consecutive_failures++))
-            if [[ $consecutive_failures -ge 3 ]]; then
-                log "Found critical point at batch size: $critical_point (3 consecutive failures)"
-                break
-            fi
-        fi
-    done
+    # Set default test parameters if not specified
+    if [[ ${#NPP_VALUES[@]} -eq 0 ]]; then
+        NPP_VALUES=(128)
+    fi
+    if [[ ${#NTG_VALUES[@]} -eq 0 ]]; then
+        NTG_VALUES=(128)  
+    fi
+    if [[ ${#NPL_VALUES[@]} -eq 0 ]]; then
+        # Generate batch sizes from 1 to MAX_BATCH_SIZE with STEP_SIZE increments
+        for ((batch_size = STEP_SIZE; batch_size <= MAX_BATCH_SIZE; batch_size += STEP_SIZE)); do
+            NPL_VALUES+=($batch_size)
+        done
+    fi
     
-    echo "Critical batch size: $critical_point" >&2
-    return 0
+    # Run batched-bench with generated parameters
+    run_batched_bench
 }
 
 # Main function
@@ -233,26 +441,30 @@ main() {
     validate_setup
     
     local timestamp=$(date +%Y%m%d_%H%M%S)
-    local output_file="$OUTPUT_DIR/stress_test_${timestamp}.jsonl"
+    local output_file="$OUTPUT_DIR/batched_bench_${timestamp}.jsonl"
     local meta_file="$OUTPUT_DIR/meta_${timestamp}.json"
     
-    log "Starting GPU stress test"
+    log "Starting batched-bench execution"
     log "Model: $MODEL_NAME"
     log "Context length: $CONTEXT_LENGTH"
-    log "Max batch size: $MAX_BATCH_SIZE"
+    log "Batch size: $BATCH_SIZE"
     log "Output: $output_file"
     
     # Write meta information
     get_hardware_info > "$meta_file"
     log "Hardware info written to: $meta_file"
     
-    # Run stress test
-    echo "Starting stress test at $(date)" >&2
-    find_critical_point > "$output_file"
-    echo "Stress test completed at $(date)" >&2
+    # Run batched-bench (stress test mode or direct execution)
+    echo "Starting batched-bench at $(date)" >&2
+    if [[ "$COMPATIBILITY_MODE" == "true" ]]; then
+        run_stress_test > "$output_file"
+    else
+        run_batched_bench > "$output_file"
+    fi
+    echo "Batched-bench completed at $(date)" >&2
     
     log "Results written to: $output_file"
-    log "Test completed successfully"
+    log "Execution completed successfully"
 }
 
 # Run main function
