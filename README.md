@@ -1,10 +1,64 @@
 # LlamaCPP Stress Test Tool
 
-A comprehensive stress testing tool for [llama.cpp](https://github.com/ggml-org/llama.cpp) that focuses on finding performance limits, testing error conditions, and validating system behavior under heavy load.
+A comprehensive stress testing solution for [llama.cpp](https://github.com/ggml-org/llama.cpp) that includes both a simple bash script for GPU stress testing and an advanced C++ framework for comprehensive stress testing scenarios.
+
+## Quick Start - GPU Stress Testing (Bash Script)
+
+For simple GPU stress testing using the existing `batched-bench` tool, use the bash script:
+
+```bash
+# Set environment variables
+export BATCHED_BENCH_PATH="/path/to/llama.cpp/batched-bench"
+export MODEL_PATH="/path/to/models"
+
+# Run basic stress test
+./gpu_stress_test.sh model.gguf
+
+# Run with custom parameters
+./gpu_stress_test.sh -v -c 4096 -m 256 -s 8 -d 60 model.gguf
+```
+
+The bash script (`gpu_stress_test.sh`) implements the requirements from issue #1:
+- Uses existing `batched-bench` tool from llama.cpp
+- Reads environment variables for executable and model paths  
+- Tests different batch sizes to find critical points
+- Outputs results in JSONL format
+- Creates meta files with hardware environment information
+
+### Bash Script Features
+
+- **Environment Variable Configuration**: Uses `BATCHED_BENCH_PATH` and `MODEL_PATH` environment variables
+- **Batch Size Testing**: Tests incrementally increasing batch sizes to find GPU limits
+- **JSONL Output**: Results saved in JSON Lines format for easy parsing
+- **Hardware Meta Data**: Captures system information, GPU details, and test parameters
+- **Error Handling**: Graceful handling of failures and timeout conditions
+- **Configurable Parameters**: Context length, max batch size, step size, and test duration
+
+## Advanced Stress Testing (C++ Framework)
+
+A comprehensive stress testing tool that focuses on finding performance limits, testing error conditions, and validating system behavior under heavy load.
 
 ## Overview
 
-This tool extends beyond simple benchmarking to provide stress testing capabilities that help identify:
+This solution provides two complementary approaches:
+
+1. **Bash Script** (`gpu_stress_test.sh`): Simple GPU stress testing using existing `batched-bench` tool
+2. **C++ Framework**: Advanced stress testing with comprehensive monitoring and error condition testing
+
+The bash script fulfills the original requirements (issue #1) while the C++ framework provides extended capabilities for comprehensive stress testing.
+
+### Bash Script Capabilities
+
+The bash script tool extends beyond simple benchmarking to provide stress testing capabilities that help identify:
+
+- **GPU Critical Points**: Find maximum batch sizes before failures occur
+- **Performance Degradation**: Monitor tokens/second as batch sizes increase
+- **Error Conditions**: Capture and log failure modes
+- **Hardware Limits**: Test against actual GPU memory and compute constraints
+
+### C++ Framework Capabilities  
+
+The C++ framework tool extends beyond simple benchmarking to provide stress testing capabilities that help identify:
 
 - **System breaking points** under extreme load conditions
 - **Memory and resource limits** with large batch sizes and long contexts
@@ -12,7 +66,7 @@ This tool extends beyond simple benchmarking to provide stress testing capabilit
 - **Sustained performance** over extended time periods
 - **Concurrent access patterns** with multiple parallel batches
 
-Unlike the standard `batched-bench` tool from llama.cpp which focuses on performance benchmarking, this stress test tool is designed to:
+Unlike the standard `batched-bench` tool from llama.cpp which focuses on performance benchmarking, the stress test tools are designed to:
 
 1. **Push systems to their limits** to find failure modes
 2. **Test error conditions and recovery** mechanisms
@@ -20,7 +74,60 @@ Unlike the standard `batched-bench` tool from llama.cpp which focuses on perform
 4. **Validate sustained operation** over time
 5. **Generate comprehensive reports** in multiple formats
 
-## Features
+## Usage
+
+### Bash Script Usage
+
+```bash
+# Set required environment variables
+export BATCHED_BENCH_PATH="/path/to/llama.cpp/batched-bench"
+export MODEL_PATH="/path/to/models"
+
+# Basic usage
+./gpu_stress_test.sh model.gguf
+
+# Advanced usage with all options
+./gpu_stress_test.sh -v -o results -c 4096 -m 512 -s 16 -d 30 model.gguf
+```
+
+#### Bash Script Options
+
+- `-v, --verbose`: Enable verbose output
+- `-o, --output DIR`: Output directory for results (default: ./results)  
+- `-c, --context LENGTH`: Context length (default: 2048)
+- `-m, --max-batch SIZE`: Maximum batch size to test (default: 512)
+- `-s, --step SIZE`: Step size for batch increments (default: 16)
+- `-d, --duration SECONDS`: Test duration per batch size (default: 30)
+
+#### Environment Variables
+
+- `BATCHED_BENCH_PATH`: Path to batched-bench executable (required)
+- `MODEL_PATH`: Path to model files directory (required)
+- `CUDA_VISIBLE_DEVICES`: GPU selection (optional)
+
+#### Output Files
+
+The script generates two types of output files:
+
+1. **JSONL Results** (`stress_test_YYYYMMDD_HHMMSS.jsonl`): Line-by-line test results
+2. **Meta Information** (`meta_YYYYMMDD_HHMMSS.json`): Hardware info and test parameters
+
+### C++ Framework Usage
+
+#### Build and Run
+
+```bash
+# Build the C++ framework
+mkdir build && cd build
+cmake ..
+make
+
+# Run basic stress test
+./llamacpp-stress-test --duration 60 --max-batches 32 --verbose
+
+# With actual llama.cpp model
+./llamacpp-stress-test --model model.gguf --context-size 4096 --gpu-layers 32
+```
 
 ### Stress Test Scenarios
 
