@@ -1,0 +1,9 @@
+services:
+  app:
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6055
+    volumes:
+      - ./models:/app/models
+      - ./results:/app/results
+      - ./bench-helper.sh:/app/bench-helper.sh
+    entrypoint: ["/app/bench-helper.sh"]
+    command: -m /app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf  -c 2048 -ngl 999 -npp 128,256 -ntg 128 -npl 1,2
