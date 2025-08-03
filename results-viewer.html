@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batched-Bench Results Viewer</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+            background: #3498db;
+            color: #fff;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 16px;
+        }
+
+        .file-input-wrapper:hover {
+            background: #2980b9;
+        }
+
+        .file-input-wrapper input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .error-message {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e74c3c;
+            color: #fff;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .controls {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .table-container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px;
+            background: #34495e;
+            color: #fff;
+        }
+
+        .table-header h2 {
+            margin-bottom: 10px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            user-select: none;
+        }
+
+        th:hover {
+            background: #e9ecef;
+        }
+
+        th.sortable::after {
+            content: ' ↕';
+            opacity: 0.5;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .number {
+            text-align: right;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Batched-Bench Results Viewer</h1>
+            <p>Upload and visualize your llama.cpp batched-bench JSONL results</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" accept=".jsonl,.json">
+                Select JSONL File
+            </div>
+            <div class="file-info" id="fileInfo"></div>
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+
+        <div class="controls" id="controls">
+            <div class="controls-row">
+                <div class="control-group">
+                    <label for="sortField">Sort By:</label>
+                    <select id="sortField">
+                        <option value="">-- Select Field --</option>
+                        <option value="pp">Prompt Tokens (PP)</option>
+                        <option value="tg">Generated Tokens (TG)</option>
+                        <option value="pl">Batches (B)</option>
+                        <option value="n_kv">KV Cache Size (N_KV)</option>
+                        <option value="t_pp">Prompt Processing Time (T_PP)</option>
+                        <option value="speed_pp">Prompt Processing Speed (S_PP)</option>
+                        <option value="t_tg">Generation Time (T_TG)</option>
+                        <option value="speed_tg">Generation Speed (S_TG)</option>
+                        <option value="t">Total Time (T)</option>
+                        <option value="speed">Total Speed (S)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="sortOrder">Order:</label>
+                    <select id="sortOrder">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="filterField">Filter Field:</label>
+                    <select id="filterField">
+                        <option value="">-- No Filter --</option>
+                        <option value="pp">Prompt Tokens (PP)</option>
+                        <option value="tg">Generated Tokens (TG)</option>
+                        <option value="pl">Batches (B)</option>
+                        <option value="n_kv">KV Cache Size (N_KV)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="filterValue">Filter Value:</label>
+                    <input type="text" id="filterValue" placeholder="Enter value to filter by">
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="stats-overview" id="statsOverview"></div>
+            
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3>Speed Comparison</h3>
+                    <canvas id="speedChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Time Distribution</h3>
+                    <canvas id="timeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>Benchmark Results</h2>
+                    <p>Click column headers to sort</p>
+                </div>
+                <div class="table-wrapper">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-field="pp">PP</th>
+                                <th class="sortable" data-field="tg">TG</th>
+                                <th class="sortable" data-field="pl">B</th>
+                                <th class="sortable" data-field="n_kv">N_KV</th>
+                                <th class="sortable number" data-field="t_pp">T_PP (s)</th>
+                                <th class="sortable number" data-field="speed_pp">S_PP (t/s)</th>
+                                <th class="sortable number" data-field="t_tg">T_TG (s)</th>
+                                <th class="sortable number" data-field="speed_tg">S_TG (t/s)</th>
+                                <th class="sortable number" data-field="t">T (s)</th>
+                                <th class="sortable number" data-field="speed">S (t/s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BatchedBenchViewer {
+            constructor() {
+                this.data = [];
+                this.filteredData = [];
+                this.currentSort = { field: null, order: 'asc' };
+
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                const fileInput = document.getElementById('fileInput');
+                const sortField = document.getElementById('sortField');
+                const sortOrder = document.getElementById('sortOrder');
+                const filterField = document.getElementById('filterField');
+                const filterValue = document.getElementById('filterValue');
+
+                fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                sortField.addEventListener('change', () => this.handleSort());
+                sortOrder.addEventListener('change', () => this.handleSort());
+                filterField.addEventListener('change', () => this.handleFilter());
+                filterValue.addEventListener('input', () => this.handleFilter());
+
+                // Add click listeners to table headers
+                document.addEventListener('click', (e) => {
+                    if (e.target.matches('th.sortable')) {
+                        this.handleTableHeaderClick(e.target);
+                    }
+                });
+            }
+
+            async handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                try {
+                    this.showFileInfo(file);
+                    const content = await this.readFile(file);
+                    this.data = this.parseJSONL(content);
+                    this.filteredData = [...this.data];
+                    this.displayResults();
+                    this.hideError();
+                } catch (error) {
+                    this.showError(`Error processing file: ${error.message}`);
+                }
+            }
+
+            readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+            }
+
+            parseJSONL(content) {
+                const lines = content.trim().split('\n').filter(line => line.trim());
+                const data = [];
+
+                for (let i = 0; i < lines.length; i++) {
+                    try {
+                        const parsed = JSON.parse(lines[i]);
+                        
+                        // Validate required fields
+                        const requiredFields = ['pp', 'tg', 'pl', 'n_kv', 't_pp', 'speed_pp', 't_tg', 'speed_tg', 't', 'speed'];
+                        const missingFields = requiredFields.filter(field => !(field in parsed));
+                        
+                        if (missingFields.length > 0) {
+                            console.warn(`Line ${i + 1}: Missing fields: ${missingFields.join(', ')}`);
+                        }
+                        
+                        data.push(parsed);
+                    } catch (error) {
+                        throw new Error(`Invalid JSON on line ${i + 1}: ${error.message}`);
+                    }
+                }
+
+                if (data.length === 0) {
+                    throw new Error('No valid JSON lines found in file');
+                }
+
+                return data;
+            }
+
+            displayResults() {
+                this.generateStats();
+                this.generateCharts();
+                this.generateTable();
+                this.showResults();
+            }
+
+            generateStats() {
+                const stats = this.calculateStats();
+                const statsContainer = document.getElementById('statsOverview');
+                
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <h3>Total Tests</h3>
+                        <div class="value">${stats.totalTests}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg Speed</h3>
+                        <div class="value">${stats.avgSpeed.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Max Speed</h3>
+                        <div class="value">${stats.maxSpeed.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Min Speed</h3>
+                        <div class="value">${stats.minSpeed.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg Total Time</h3>
+                        <div class="value">${stats.avgTime.toFixed(2)}s</div>
+                    </div>
+                `;
+            }
+
+            calculateStats() {
+                const speeds = this.filteredData.map(item => item.speed).filter(s => !isNaN(s));
+                const times = this.filteredData.map(item => item.t).filter(t => !isNaN(t));
+
+                return {
+                    totalTests: this.filteredData.length,
+                    avgSpeed: speeds.reduce((a, b) => a + b, 0) / speeds.length || 0,
+                    maxSpeed: Math.max(...speeds) || 0,
+                    minSpeed: Math.min(...speeds) || 0,
+                    avgTime: times.reduce((a, b) => a + b, 0) / times.length || 0
+                };
+            }
+
+            generateCharts() {
+                this.generateSpeedChart();
+                this.generateTimeChart();
+            }
+
+            generateSpeedChart() {
+                const canvas = document.getElementById('speedChart');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions
+                canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+                canvas.height = 300 * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                canvas.style.width = canvas.offsetWidth + 'px';
+                canvas.style.height = '300px';
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (this.filteredData.length === 0) return;
+
+                const padding = 40;
+                const chartWidth = canvas.offsetWidth - 2 * padding;
+                const chartHeight = 300 - 2 * padding;
+
+                // Get speed values
+                const speeds = this.filteredData.map(item => item.speed || 0);
+                const maxSpeed = Math.max(...speeds);
+                const minSpeed = Math.min(...speeds);
+
+                // Draw axes
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(padding, padding);
+                ctx.lineTo(padding, padding + chartHeight);
+                ctx.lineTo(padding + chartWidth, padding + chartHeight);
+                ctx.stroke();
+
+                // Draw data points and line
+                ctx.strokeStyle = '#3498db';
+                ctx.fillStyle = '#3498db';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                speeds.forEach((speed, index) => {
+                    const x = padding + (index / (speeds.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+
+                    // Draw point
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.beginPath();
+                });
+                ctx.stroke();
+
+                // Add labels
+                ctx.fillStyle = '#666';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Speed (tokens/second)', canvas.offsetWidth / 2, 290);
+                
+                ctx.save();
+                ctx.translate(15, canvas.offsetHeight / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Test Index', 0, 0);
+                ctx.restore();
+            }
+
+            generateTimeChart() {
+                const canvas = document.getElementById('timeChart');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions
+                canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+                canvas.height = 300 * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                canvas.style.width = canvas.offsetWidth + 'px';
+                canvas.style.height = '300px';
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (this.filteredData.length === 0) return;
+
+                const padding = 40;
+                const chartWidth = canvas.offsetWidth - 2 * padding;
+                const chartHeight = 300 - 2 * padding;
+
+                // Get time values
+                const ppTimes = this.filteredData.map(item => item.t_pp || 0);
+                const tgTimes = this.filteredData.map(item => item.t_tg || 0);
+                const maxTime = Math.max(...ppTimes.map((pp, i) => pp + tgTimes[i]));
+
+                // Draw axes
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(padding, padding);
+                ctx.lineTo(padding, padding + chartHeight);
+                ctx.lineTo(padding + chartWidth, padding + chartHeight);
+                ctx.stroke();
+
+                // Draw bars
+                const barWidth = chartWidth / this.filteredData.length * 0.8;
+                const barSpacing = chartWidth / this.filteredData.length * 0.2;
+
+                this.filteredData.forEach((item, index) => {
+                    const x = padding + index * (chartWidth / this.filteredData.length) + barSpacing / 2;
+                    const ppHeight = (item.t_pp / maxTime) * chartHeight;
+                    const tgHeight = (item.t_tg / maxTime) * chartHeight;
+
+                    // Draw prompt processing time bar
+                    ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
+                    ctx.fillRect(x, padding + chartHeight - ppHeight, barWidth, ppHeight);
+
+                    // Draw text generation time bar
+                    ctx.fillStyle = 'rgba(46, 204, 113, 0.8)';
+                    ctx.fillRect(x, padding + chartHeight - ppHeight - tgHeight, barWidth, tgHeight);
+                });
+
+                // Add legend
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
+                ctx.fillRect(padding, 10, 15, 15);
+                ctx.fillStyle = '#333';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('Prompt Processing Time', padding + 20, 22);
+
+                ctx.fillStyle = 'rgba(46, 204, 113, 0.8)';
+                ctx.fillRect(padding + 200, 10, 15, 15);
+                ctx.fillText('Text Generation Time', padding + 220, 22);
+
+                // Add labels
+                ctx.textAlign = 'center';
+                ctx.fillText('Time (seconds)', canvas.offsetWidth / 2, 290);
+            }
+
+            generateTable() {
+                const tableBody = document.getElementById('resultsTableBody');
+                tableBody.innerHTML = '';
+
+                this.filteredData.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.pp || 'N/A'}</td>
+                        <td>${item.tg || 'N/A'}</td>
+                        <td>${item.pl || 'N/A'}</td>
+                        <td>${item.n_kv || 'N/A'}</td>
+                        <td class="number">${this.formatNumber(item.t_pp)}</td>
+                        <td class="number">${this.formatNumber(item.speed_pp)}</td>
+                        <td class="number">${this.formatNumber(item.t_tg)}</td>
+                        <td class="number">${this.formatNumber(item.speed_tg)}</td>
+                        <td class="number">${this.formatNumber(item.t)}</td>
+                        <td class="number">${this.formatNumber(item.speed)}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            formatNumber(value) {
+                if (value === null || value === undefined || isNaN(value)) {
+                    return 'N/A';
+                }
+                return parseFloat(value).toFixed(3);
+            }
+
+            handleTableHeaderClick(header) {
+                const field = header.dataset.field;
+                if (!field) return;
+
+                // Update sort state
+                if (this.currentSort.field === field) {
+                    this.currentSort.order = this.currentSort.order === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.currentSort.field = field;
+                    this.currentSort.order = 'asc';
+                }
+
+                // Update header visual state
+                document.querySelectorAll('th.sortable').forEach(th => {
+                    th.classList.remove('sort-asc', 'sort-desc');
+                });
+                header.classList.add(this.currentSort.order === 'asc' ? 'sort-asc' : 'sort-desc');
+
+                // Update controls
+                document.getElementById('sortField').value = field;
+                document.getElementById('sortOrder').value = this.currentSort.order;
+
+                this.sortData();
+            }
+
+            handleSort() {
+                const field = document.getElementById('sortField').value;
+                const order = document.getElementById('sortOrder').value;
+
+                if (!field) return;
+
+                this.currentSort = { field, order };
+                this.sortData();
+            }
+
+            sortData() {
+                if (!this.currentSort.field) return;
+
+                this.filteredData.sort((a, b) => {
+                    const aVal = parseFloat(a[this.currentSort.field]) || 0;
+                    const bVal = parseFloat(b[this.currentSort.field]) || 0;
+
+                    if (this.currentSort.order === 'asc') {
+                        return aVal - bVal;
+                    } else {
+                        return bVal - aVal;
+                    }
+                });
+
+                this.generateTable();
+                this.generateCharts();
+                this.generateStats();
+            }
+
+            handleFilter() {
+                const field = document.getElementById('filterField').value;
+                const value = document.getElementById('filterValue').value.trim();
+
+                if (!field || !value) {
+                    this.filteredData = [...this.data];
+                } else {
+                    this.filteredData = this.data.filter(item => {
+                        const itemValue = String(item[field] || '').toLowerCase();
+                        return itemValue.includes(value.toLowerCase());
+                    });
+                }
+
+                this.generateTable();
+                this.generateCharts();
+                this.generateStats();
+            }
+
+            showFileInfo(file) {
+                const fileInfo = document.getElementById('fileInfo');
+                fileInfo.innerHTML = `
+                    <strong>File:</strong> ${file.name}<br>
+                    <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
+                    <strong>Type:</strong> ${file.type || 'Unknown'}
+                `;
+                fileInfo.style.display = 'block';
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+
+            showResults() {
+                document.getElementById('controls').style.display = 'block';
+                document.getElementById('resultsSection').style.display = 'block';
+            }
+        }
+
+        // Initialize the viewer when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new BatchedBenchViewer();
+        });
+    </script>
+</body>
+</html>
