@@ -96,40 +96,7 @@
             display: none;
         }
 
-        .controls {
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: block;
-        }
 
-        .controls-row {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .control-group label {
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .control-group input,
-        .control-group select {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
 
         .results-section {
             display: block;
@@ -220,29 +187,8 @@
         th {
             background: #f8f9fa;
             font-weight: 600;
-            cursor: pointer;
             position: sticky;
             top: 0;
-            user-select: none;
-        }
-
-        th:hover {
-            background: #e9ecef;
-        }
-
-        th.sortable::after {
-            content: ' ↕';
-            opacity: 0.5;
-        }
-
-        th.sort-asc::after {
-            content: ' ↑';
-            opacity: 1;
-        }
-
-        th.sort-desc::after {
-            content: ' ↓';
-            opacity: 1;
         }
 
         tr:hover {
@@ -260,11 +206,6 @@
 
             .header h1 {
                 font-size: 2em;
-            }
-
-            .controls-row {
-                flex-direction: column;
-                align-items: stretch;
             }
 
             .charts-section {
@@ -295,47 +236,7 @@
 
         <div class="error-message" id="errorMessage"></div>
 
-        <div class="controls" id="controls">
-            <div class="controls-row">
-                <div class="control-group">
-                    <label for="sortField">Sort By:</label>
-                    <select id="sortField">
-                        <option value="">-- Select Field --</option>
-                        <option value="pp">Prompt Tokens (PP)</option>
-                        <option value="tg">Generated Tokens (TG)</option>
-                        <option value="pl">Batches (B)</option>
-                        <option value="n_kv">KV Cache Size (N_KV)</option>
-                        <option value="t_pp">Prompt Processing Time (T_PP)</option>
-                        <option value="speed_pp">Prompt Processing Speed (S_PP)</option>
-                        <option value="t_tg">Generation Time (T_TG)</option>
-                        <option value="speed_tg">Generation Speed (S_TG)</option>
-                        <option value="t">Total Time (T)</option>
-                        <option value="speed">Total Speed (S)</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="sortOrder">Order:</label>
-                    <select id="sortOrder">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="filterField">Filter Field:</label>
-                    <select id="filterField">
-                        <option value="">-- No Filter --</option>
-                        <option value="pp">Prompt Tokens (PP)</option>
-                        <option value="tg">Generated Tokens (TG)</option>
-                        <option value="pl">Batches (B)</option>
-                        <option value="n_kv">KV Cache Size (N_KV)</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="filterValue">Filter Value:</label>
-                    <input type="text" id="filterValue" placeholder="Enter value to filter by">
-                </div>
-            </div>
-        </div>
+
 
         <div class="results-section" id="resultsSection">
             <div class="stats-overview" id="statsOverview"></div>
@@ -354,22 +255,21 @@
             <div class="table-container">
                 <div class="table-header">
                     <h2>Benchmark Results</h2>
-                    <p>Click column headers to sort</p>
                 </div>
                 <div class="table-wrapper">
                     <table id="resultsTable">
                         <thead>
                             <tr>
-                                <th class="sortable" data-field="pp">PP</th>
-                                <th class="sortable" data-field="tg">TG</th>
-                                <th class="sortable" data-field="pl">B</th>
-                                <th class="sortable" data-field="n_kv">N_KV</th>
-                                <th class="sortable number" data-field="t_pp">T_PP (s)</th>
-                                <th class="sortable number" data-field="speed_pp">S_PP (t/s)</th>
-                                <th class="sortable number" data-field="t_tg">T_TG (s)</th>
-                                <th class="sortable number" data-field="speed_tg">S_TG (t/s)</th>
-                                <th class="sortable number" data-field="t">T (s)</th>
-                                <th class="sortable number" data-field="speed">S (t/s)</th>
+                                <th>PP</th>
+                                <th>TG</th>
+                                <th>B</th>
+                                <th>N_KV</th>
+                                <th class="number">T_PP (s)</th>
+                                <th class="number">S_PP (t/s)</th>
+                                <th class="number">T_TG (s)</th>
+                                <th class="number">S_TG (t/s)</th>
+                                <th class="number">T (s)</th>
+                                <th class="number">S (t/s)</th>
                             </tr>
                         </thead>
                         <tbody id="resultsTableBody">
@@ -384,38 +284,17 @@
         class BatchedBenchViewer {
             constructor() {
                 this.data = [];
-                this.filteredData = [];
-                this.currentSort = { field: null, order: 'asc' };
                 this.environment = {};
 
-                this.initializeEventListeners();
                 this.loadData();
             }
 
-            initializeEventListeners() {
-                const sortField = document.getElementById('sortField');
-                const sortOrder = document.getElementById('sortOrder');
-                const filterField = document.getElementById('filterField');
-                const filterValue = document.getElementById('filterValue');
 
-                sortField.addEventListener('change', () => this.handleSort());
-                sortOrder.addEventListener('change', () => this.handleSort());
-                filterField.addEventListener('change', () => this.handleFilter());
-                filterValue.addEventListener('input', () => this.handleFilter());
-
-                // Add click listeners to table headers
-                document.addEventListener('click', (e) => {
-                    if (e.target.matches('th.sortable')) {
-                        this.handleTableHeaderClick(e.target);
-                    }
-                });
-            }
 
             async loadData() {
                 try {
                     await this.loadEnvironment();
                     await this.loadResults();
-                    this.filteredData = [...this.data];
                     this.displayResults();
                     this.hideError();
                 } catch (error) {
@@ -492,16 +371,28 @@
                         <div class="value">${stats.totalTests}</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Avg Speed</h3>
-                        <div class="value">${stats.avgSpeed.toFixed(1)} t/s</div>
+                        <h3>Avg S_PP</h3>
+                        <div class="value">${stats.avgSpeedPP.toFixed(1)} t/s</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Max Speed</h3>
-                        <div class="value">${stats.maxSpeed.toFixed(1)} t/s</div>
+                        <h3>Max S_PP</h3>
+                        <div class="value">${stats.maxSpeedPP.toFixed(1)} t/s</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Min Speed</h3>
-                        <div class="value">${stats.minSpeed.toFixed(1)} t/s</div>
+                        <h3>Min S_PP</h3>
+                        <div class="value">${stats.minSpeedPP.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg S_TG</h3>
+                        <div class="value">${stats.avgSpeedTG.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Max S_TG</h3>
+                        <div class="value">${stats.maxSpeedTG.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Min S_TG</h3>
+                        <div class="value">${stats.minSpeedTG.toFixed(1)} t/s</div>
                     </div>
                     <div class="stat-card">
                         <h3>Avg Total Time</h3>
@@ -511,14 +402,18 @@
             }
 
             calculateStats() {
-                const speeds = this.filteredData.map(item => item.speed).filter(s => !isNaN(s));
-                const times = this.filteredData.map(item => item.t).filter(t => !isNaN(t));
+                const speedsPP = this.data.map(item => item.speed_pp).filter(s => !isNaN(s));
+                const speedsTG = this.data.map(item => item.speed_tg).filter(s => !isNaN(s));
+                const times = this.data.map(item => item.t).filter(t => !isNaN(t));
 
                 return {
-                    totalTests: this.filteredData.length,
-                    avgSpeed: speeds.reduce((a, b) => a + b, 0) / speeds.length || 0,
-                    maxSpeed: Math.max(...speeds) || 0,
-                    minSpeed: Math.min(...speeds) || 0,
+                    totalTests: this.data.length,
+                    avgSpeedPP: speedsPP.reduce((a, b) => a + b, 0) / speedsPP.length || 0,
+                    maxSpeedPP: Math.max(...speedsPP) || 0,
+                    minSpeedPP: Math.min(...speedsPP) || 0,
+                    avgSpeedTG: speedsTG.reduce((a, b) => a + b, 0) / speedsTG.length || 0,
+                    maxSpeedTG: Math.max(...speedsTG) || 0,
+                    minSpeedTG: Math.min(...speedsTG) || 0,
                     avgTime: times.reduce((a, b) => a + b, 0) / times.length || 0
                 };
             }
@@ -542,16 +437,18 @@
                 // Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                if (this.filteredData.length === 0) return;
+                if (this.data.length === 0) return;
 
                 const padding = 40;
                 const chartWidth = canvas.offsetWidth - 2 * padding;
                 const chartHeight = 300 - 2 * padding;
 
                 // Get speed values
-                const speeds = this.filteredData.map(item => item.speed || 0);
-                const maxSpeed = Math.max(...speeds);
-                const minSpeed = Math.min(...speeds);
+                const speedsPP = this.data.map(item => item.speed_pp || 0);
+                const speedsTG = this.data.map(item => item.speed_tg || 0);
+                const allSpeeds = [...speedsPP, ...speedsTG];
+                const maxSpeed = Math.max(...allSpeeds);
+                const minSpeed = Math.min(...allSpeeds);
 
                 // Draw axes
                 ctx.strokeStyle = '#ddd';
@@ -562,14 +459,14 @@
                 ctx.lineTo(padding + chartWidth, padding + chartHeight);
                 ctx.stroke();
 
-                // Draw data points and line
-                ctx.strokeStyle = '#3498db';
-                ctx.fillStyle = '#3498db';
+                // Draw S_PP line and points
+                ctx.strokeStyle = '#e74c3c';
+                ctx.fillStyle = '#e74c3c';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
 
-                speeds.forEach((speed, index) => {
-                    const x = padding + (index / (speeds.length - 1)) * chartWidth;
+                speedsPP.forEach((speed, index) => {
+                    const x = padding + (index / (speedsPP.length - 1)) * chartWidth;
                     const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
                     
                     if (index === 0) {
@@ -577,18 +474,60 @@
                     } else {
                         ctx.lineTo(x, y);
                     }
-
-                    // Draw point
-                    ctx.beginPath();
-                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.beginPath();
                 });
                 ctx.stroke();
 
-                // Add labels
-                ctx.fillStyle = '#666';
+                // Draw S_PP points
+                speedsPP.forEach((speed, index) => {
+                    const x = padding + (index / (speedsPP.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+
+                // Draw S_TG line and points
+                ctx.strokeStyle = '#2ecc71';
+                ctx.fillStyle = '#2ecc71';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                speedsTG.forEach((speed, index) => {
+                    const x = padding + (index / (speedsTG.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw S_TG points
+                speedsTG.forEach((speed, index) => {
+                    const x = padding + (index / (speedsTG.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+
+                // Add legend
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(padding, 10, 15, 15);
+                ctx.fillStyle = '#333';
                 ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('S_PP (Prompt Processing)', padding + 20, 22);
+
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(padding + 200, 10, 15, 15);
+                ctx.fillText('S_TG (Text Generation)', padding + 220, 22);
+
+                // Add labels
                 ctx.textAlign = 'center';
                 ctx.fillText('Speed (tokens/second)', canvas.offsetWidth / 2, 290);
                 
@@ -613,15 +552,15 @@
                 // Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                if (this.filteredData.length === 0) return;
+                if (this.data.length === 0) return;
 
                 const padding = 40;
                 const chartWidth = canvas.offsetWidth - 2 * padding;
                 const chartHeight = 300 - 2 * padding;
 
                 // Get time values
-                const ppTimes = this.filteredData.map(item => item.t_pp || 0);
-                const tgTimes = this.filteredData.map(item => item.t_tg || 0);
+                const ppTimes = this.data.map(item => item.t_pp || 0);
+                const tgTimes = this.data.map(item => item.t_tg || 0);
                 const maxTime = Math.max(...ppTimes.map((pp, i) => pp + tgTimes[i]));
 
                 // Draw axes
@@ -634,11 +573,11 @@
                 ctx.stroke();
 
                 // Draw bars
-                const barWidth = chartWidth / this.filteredData.length * 0.8;
-                const barSpacing = chartWidth / this.filteredData.length * 0.2;
+                const barWidth = chartWidth / this.data.length * 0.8;
+                const barSpacing = chartWidth / this.data.length * 0.2;
 
-                this.filteredData.forEach((item, index) => {
-                    const x = padding + index * (chartWidth / this.filteredData.length) + barSpacing / 2;
+                this.data.forEach((item, index) => {
+                    const x = padding + index * (chartWidth / this.data.length) + barSpacing / 2;
                     const ppHeight = (item.t_pp / maxTime) * chartHeight;
                     const tgHeight = (item.t_tg / maxTime) * chartHeight;
 
@@ -672,7 +611,7 @@
                 const tableBody = document.getElementById('resultsTableBody');
                 tableBody.innerHTML = '';
 
-                this.filteredData.forEach(item => {
+                this.data.forEach(item => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${item.pp || 'N/A'}</td>
@@ -697,77 +636,7 @@
                 return parseFloat(value).toFixed(3);
             }
 
-            handleTableHeaderClick(header) {
-                const field = header.dataset.field;
-                if (!field) return;
 
-                // Update sort state
-                if (this.currentSort.field === field) {
-                    this.currentSort.order = this.currentSort.order === 'asc' ? 'desc' : 'asc';
-                } else {
-                    this.currentSort.field = field;
-                    this.currentSort.order = 'asc';
-                }
-
-                // Update header visual state
-                document.querySelectorAll('th.sortable').forEach(th => {
-                    th.classList.remove('sort-asc', 'sort-desc');
-                });
-                header.classList.add(this.currentSort.order === 'asc' ? 'sort-asc' : 'sort-desc');
-
-                // Update controls
-                document.getElementById('sortField').value = field;
-                document.getElementById('sortOrder').value = this.currentSort.order;
-
-                this.sortData();
-            }
-
-            handleSort() {
-                const field = document.getElementById('sortField').value;
-                const order = document.getElementById('sortOrder').value;
-
-                if (!field) return;
-
-                this.currentSort = { field, order };
-                this.sortData();
-            }
-
-            sortData() {
-                if (!this.currentSort.field) return;
-
-                this.filteredData.sort((a, b) => {
-                    const aVal = parseFloat(a[this.currentSort.field]) || 0;
-                    const bVal = parseFloat(b[this.currentSort.field]) || 0;
-
-                    if (this.currentSort.order === 'asc') {
-                        return aVal - bVal;
-                    } else {
-                        return bVal - aVal;
-                    }
-                });
-
-                this.generateTable();
-                this.generateCharts();
-                this.generateStats();
-            }
-
-            handleFilter() {
-                const field = document.getElementById('filterField').value;
-                const value = document.getElementById('filterValue').value.trim();
-
-                if (!field || !value) {
-                    this.filteredData = [...this.data];
-                } else {
-                    this.filteredData = this.data.filter(item => {
-                        const itemValue = String(item[field] || '').toLowerCase();
-                        return itemValue.includes(value.toLowerCase());
-                    });
-                }
-
-                this.generateTable();
-                this.generateCharts();
-                this.generateStats();
-            }
 
             displayEnvironment() {
                 const envInfo = document.getElementById('environmentInfo');
@@ -825,7 +694,6 @@
             }
 
             showResults() {
-                document.getElementById('controls').style.display = 'block';
                 document.getElementById('resultsSection').style.display = 'block';
             }
         }
