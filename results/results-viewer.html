@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batched-Bench Results Viewer</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .environment-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .environment-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .env-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .env-card {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .env-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .env-detail {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .env-detail strong {
+            color: #2c3e50;
+        }
+
+        .error-message {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e74c3c;
+            color: #fff;
+            border-radius: 4px;
+            display: none;
+        }
+
+
+
+        .results-section {
+            display: block;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .table-container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px;
+            background: #34495e;
+            color: #fff;
+        }
+
+        .table-header h2 {
+            margin-bottom: 10px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .number {
+            text-align: right;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Batched-Bench Results Viewer</h1>
+            <p>Visualizing llama.cpp batched-bench JSONL results</p>
+        </div>
+
+        <div class="environment-section">
+            <h2>Environment Information</h2>
+            <div id="environmentInfo">Loading environment data...</div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+
+
+        <div class="results-section" id="resultsSection">
+            <div class="stats-overview" id="statsOverview"></div>
+            
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3>Speed Comparison</h3>
+                    <canvas id="speedChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Time Distribution</h3>
+                    <canvas id="timeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <h2>Benchmark Results</h2>
+                </div>
+                <div class="table-wrapper">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>PP</th>
+                                <th>TG</th>
+                                <th>B</th>
+                                <th>N_KV</th>
+                                <th class="number">T_PP (s)</th>
+                                <th class="number">S_PP (t/s)</th>
+                                <th class="number">T_TG (s)</th>
+                                <th class="number">S_TG (t/s)</th>
+                                <th class="number">T (s)</th>
+                                <th class="number">S (t/s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BatchedBenchViewer {
+            constructor() {
+                this.data = [];
+                this.environment = {};
+
+                this.loadData();
+            }
+
+
+
+            async loadData() {
+                try {
+                    await this.loadEnvironment();
+                    await this.loadResults();
+                    this.displayResults();
+                    this.hideError();
+                } catch (error) {
+                    this.showError(`Error loading data: ${error.message}`);
+                }
+            }
+
+            async loadEnvironment() {
+                try {
+                    const response = await fetch('./environment.json');
+                    if (!response.ok) {
+                        throw new Error(`Failed to load environment.json: ${response.status} ${response.statusText}`);
+                    }
+                    this.environment = await response.json();
+                    this.displayEnvironment();
+                } catch (error) {
+                    console.warn('Could not load environment.json:', error.message);
+                    this.displayEnvironmentError();
+                }
+            }
+
+            async loadResults() {
+                const response = await fetch('./output.jsonl');
+                if (!response.ok) {
+                    throw new Error(`Failed to load output.jsonl: ${response.status} ${response.statusText}`);
+                }
+                const content = await response.text();
+                this.data = this.parseJSONL(content);
+            }
+
+            parseJSONL(content) {
+                const lines = content.trim().split('\n').filter(line => line.trim());
+                const data = [];
+
+                for (let i = 0; i < lines.length; i++) {
+                    try {
+                        const parsed = JSON.parse(lines[i]);
+                        
+                        // Validate required fields
+                        const requiredFields = ['pp', 'tg', 'pl', 'n_kv', 't_pp', 'speed_pp', 't_tg', 'speed_tg', 't', 'speed'];
+                        const missingFields = requiredFields.filter(field => !(field in parsed));
+                        
+                        if (missingFields.length > 0) {
+                            console.warn(`Line ${i + 1}: Missing fields: ${missingFields.join(', ')}`);
+                        }
+                        
+                        data.push(parsed);
+                    } catch (error) {
+                        throw new Error(`Invalid JSON on line ${i + 1}: ${error.message}`);
+                    }
+                }
+
+                if (data.length === 0) {
+                    throw new Error('No valid JSON lines found in file');
+                }
+
+                return data;
+            }
+
+            displayResults() {
+                this.generateStats();
+                this.generateCharts();
+                this.generateTable();
+                this.showResults();
+            }
+
+            generateStats() {
+                const stats = this.calculateStats();
+                const statsContainer = document.getElementById('statsOverview');
+                
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <h3>Total Tests</h3>
+                        <div class="value">${stats.totalTests}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg S_PP</h3>
+                        <div class="value">${stats.avgSpeedPP.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Max S_PP</h3>
+                        <div class="value">${stats.maxSpeedPP.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Min S_PP</h3>
+                        <div class="value">${stats.minSpeedPP.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg S_TG</h3>
+                        <div class="value">${stats.avgSpeedTG.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Max S_TG</h3>
+                        <div class="value">${stats.maxSpeedTG.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Min S_TG</h3>
+                        <div class="value">${stats.minSpeedTG.toFixed(1)} t/s</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Avg Total Time</h3>
+                        <div class="value">${stats.avgTime.toFixed(2)}s</div>
+                    </div>
+                `;
+            }
+
+            calculateStats() {
+                const speedsPP = this.data.map(item => item.speed_pp).filter(s => !isNaN(s));
+                const speedsTG = this.data.map(item => item.speed_tg).filter(s => !isNaN(s));
+                const times = this.data.map(item => item.t).filter(t => !isNaN(t));
+
+                return {
+                    totalTests: this.data.length,
+                    avgSpeedPP: speedsPP.reduce((a, b) => a + b, 0) / speedsPP.length || 0,
+                    maxSpeedPP: Math.max(...speedsPP) || 0,
+                    minSpeedPP: Math.min(...speedsPP) || 0,
+                    avgSpeedTG: speedsTG.reduce((a, b) => a + b, 0) / speedsTG.length || 0,
+                    maxSpeedTG: Math.max(...speedsTG) || 0,
+                    minSpeedTG: Math.min(...speedsTG) || 0,
+                    avgTime: times.reduce((a, b) => a + b, 0) / times.length || 0
+                };
+            }
+
+            generateCharts() {
+                this.generateSpeedChart();
+                this.generateTimeChart();
+            }
+
+            generateSpeedChart() {
+                const canvas = document.getElementById('speedChart');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions
+                canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+                canvas.height = 300 * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                canvas.style.width = canvas.offsetWidth + 'px';
+                canvas.style.height = '300px';
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (this.data.length === 0) return;
+
+                const padding = 40;
+                const chartWidth = canvas.offsetWidth - 2 * padding;
+                const chartHeight = 300 - 2 * padding;
+
+                // Get speed values
+                const speedsPP = this.data.map(item => item.speed_pp || 0);
+                const speedsTG = this.data.map(item => item.speed_tg || 0);
+                const allSpeeds = [...speedsPP, ...speedsTG];
+                const maxSpeed = Math.max(...allSpeeds);
+                const minSpeed = Math.min(...allSpeeds);
+
+                // Draw axes
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(padding, padding);
+                ctx.lineTo(padding, padding + chartHeight);
+                ctx.lineTo(padding + chartWidth, padding + chartHeight);
+                ctx.stroke();
+
+                // Draw S_PP line and points
+                ctx.strokeStyle = '#e74c3c';
+                ctx.fillStyle = '#e74c3c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                speedsPP.forEach((speed, index) => {
+                    const x = padding + (index / (speedsPP.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw S_PP points
+                speedsPP.forEach((speed, index) => {
+                    const x = padding + (index / (speedsPP.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+
+                // Draw S_TG line and points
+                ctx.strokeStyle = '#2ecc71';
+                ctx.fillStyle = '#2ecc71';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                speedsTG.forEach((speed, index) => {
+                    const x = padding + (index / (speedsTG.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+
+                // Draw S_TG points
+                speedsTG.forEach((speed, index) => {
+                    const x = padding + (index / (speedsTG.length - 1)) * chartWidth;
+                    const y = padding + chartHeight - ((speed - minSpeed) / (maxSpeed - minSpeed)) * chartHeight;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+
+                // Add legend
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(padding, 10, 15, 15);
+                ctx.fillStyle = '#333';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('S_PP (Prompt Processing)', padding + 20, 22);
+
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(padding + 200, 10, 15, 15);
+                ctx.fillText('S_TG (Text Generation)', padding + 220, 22);
+
+                // Add labels
+                ctx.textAlign = 'center';
+                ctx.fillText('Speed (tokens/second)', canvas.offsetWidth / 2, 290);
+                
+                ctx.save();
+                ctx.translate(15, canvas.offsetHeight / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Test Index', 0, 0);
+                ctx.restore();
+            }
+
+            generateTimeChart() {
+                const canvas = document.getElementById('timeChart');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas dimensions
+                canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+                canvas.height = 300 * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                canvas.style.width = canvas.offsetWidth + 'px';
+                canvas.style.height = '300px';
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (this.data.length === 0) return;
+
+                const padding = 40;
+                const chartWidth = canvas.offsetWidth - 2 * padding;
+                const chartHeight = 300 - 2 * padding;
+
+                // Get time values
+                const ppTimes = this.data.map(item => item.t_pp || 0);
+                const tgTimes = this.data.map(item => item.t_tg || 0);
+                const maxTime = Math.max(...ppTimes.map((pp, i) => pp + tgTimes[i]));
+
+                // Draw axes
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(padding, padding);
+                ctx.lineTo(padding, padding + chartHeight);
+                ctx.lineTo(padding + chartWidth, padding + chartHeight);
+                ctx.stroke();
+
+                // Draw bars
+                const barWidth = chartWidth / this.data.length * 0.8;
+                const barSpacing = chartWidth / this.data.length * 0.2;
+
+                this.data.forEach((item, index) => {
+                    const x = padding + index * (chartWidth / this.data.length) + barSpacing / 2;
+                    const ppHeight = (item.t_pp / maxTime) * chartHeight;
+                    const tgHeight = (item.t_tg / maxTime) * chartHeight;
+
+                    // Draw prompt processing time bar
+                    ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
+                    ctx.fillRect(x, padding + chartHeight - ppHeight, barWidth, ppHeight);
+
+                    // Draw text generation time bar
+                    ctx.fillStyle = 'rgba(46, 204, 113, 0.8)';
+                    ctx.fillRect(x, padding + chartHeight - ppHeight - tgHeight, barWidth, tgHeight);
+                });
+
+                // Add legend
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.8)';
+                ctx.fillRect(padding, 10, 15, 15);
+                ctx.fillStyle = '#333';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('Prompt Processing Time', padding + 20, 22);
+
+                ctx.fillStyle = 'rgba(46, 204, 113, 0.8)';
+                ctx.fillRect(padding + 200, 10, 15, 15);
+                ctx.fillText('Text Generation Time', padding + 220, 22);
+
+                // Add labels
+                ctx.textAlign = 'center';
+                ctx.fillText('Time (seconds)', canvas.offsetWidth / 2, 290);
+            }
+
+            generateTable() {
+                const tableBody = document.getElementById('resultsTableBody');
+                tableBody.innerHTML = '';
+
+                this.data.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.pp || 'N/A'}</td>
+                        <td>${item.tg || 'N/A'}</td>
+                        <td>${item.pl || 'N/A'}</td>
+                        <td>${item.n_kv || 'N/A'}</td>
+                        <td class="number">${this.formatNumber(item.t_pp)}</td>
+                        <td class="number">${this.formatNumber(item.speed_pp)}</td>
+                        <td class="number">${this.formatNumber(item.t_tg)}</td>
+                        <td class="number">${this.formatNumber(item.speed_tg)}</td>
+                        <td class="number">${this.formatNumber(item.t)}</td>
+                        <td class="number">${this.formatNumber(item.speed)}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            formatNumber(value) {
+                if (value === null || value === undefined || isNaN(value)) {
+                    return 'N/A';
+                }
+                return parseFloat(value).toFixed(3);
+            }
+
+
+
+            displayEnvironment() {
+                const envInfo = document.getElementById('environmentInfo');
+                const env = this.environment;
+                
+                envInfo.innerHTML = `
+                    <div class="env-grid">
+                        <div class="env-card">
+                            <h3>🕐 Benchmark Run</h3>
+                            <div class="env-detail"><strong>Timestamp:</strong> ${new Date(env.timestamp).toLocaleString()}</div>
+                            <div class="env-detail"><strong>Executable:</strong> ${env.bench_executable}</div>
+                        </div>
+                        <div class="env-card">
+                            <h3>⚙️ Arguments</h3>
+                            <div class="env-detail"><strong>Command:</strong> ${env.bench_arguments ? env.bench_arguments.join(' ') : 'N/A'}</div>
+                        </div>
+                        <div class="env-card">
+                            <h3>🖥️ CPU Information</h3>
+                            <div class="env-detail"><strong>Model:</strong> ${env.cpu_info?.model || 'N/A'}</div>
+                            <div class="env-detail"><strong>Cores:</strong> ${env.cpu_info?.cores || 'N/A'}</div>
+                        </div>
+                        <div class="env-card">
+                            <h3>🧠 Memory Information</h3>
+                            <div class="env-detail"><strong>Total:</strong> ${env.memory_info?.total_mb ? (env.memory_info.total_mb / 1024).toFixed(1) + ' GB' : 'N/A'}</div>
+                            <div class="env-detail"><strong>Available:</strong> ${env.memory_info?.available_mb ? (env.memory_info.available_mb / 1024).toFixed(1) + ' GB' : 'N/A'}</div>
+                        </div>
+                        ${env.gpu_info ? `
+                        <div class="env-card">
+                            <h3>🎮 GPU Information</h3>
+                            <div class="env-detail"><strong>GPU:</strong> ${env.gpu_info}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            displayEnvironmentError() {
+                const envInfo = document.getElementById('environmentInfo');
+                envInfo.innerHTML = `
+                    <div class="env-card">
+                        <h3>⚠️ Environment Information Unavailable</h3>
+                        <div class="env-detail">Could not load environment.json file</div>
+                    </div>
+                `;
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+
+            showResults() {
+                document.getElementById('resultsSection').style.display = 'block';
+            }
+        }
+
+        // Initialize the viewer when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new BatchedBenchViewer();
+        });
+    </script>
+</body>
+</html>
