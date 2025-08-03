@@ -45,7 +45,7 @@
             font-size: 1.1em;
         }
 
-        .upload-section {
+        .environment-section {
             background: #fff;
             border-radius: 8px;
             padding: 30px;
@@ -53,34 +53,38 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .file-input-wrapper {
-            position: relative;
-            display: inline-block;
-            overflow: hidden;
-            background: #3498db;
-            color: #fff;
-            padding: 15px 30px;
+        .environment-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .env-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .env-card {
+            background: #f8f9fa;
             border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            font-size: 16px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
         }
 
-        .file-input-wrapper:hover {
-            background: #2980b9;
+        .env-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
         }
 
-        .file-input-wrapper input {
-            position: absolute;
-            left: -9999px;
+        .env-detail {
+            margin-bottom: 5px;
+            font-size: 0.9em;
         }
 
-        .file-info {
-            margin-top: 15px;
-            padding: 10px;
-            background: #ecf0f1;
-            border-radius: 4px;
-            display: none;
+        .env-detail strong {
+            color: #2c3e50;
         }
 
         .error-message {
@@ -98,7 +102,7 @@
             padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: none;
+            display: block;
         }
 
         .controls-row {
@@ -128,7 +132,7 @@
         }
 
         .results-section {
-            display: none;
+            display: block;
         }
 
         .stats-overview {
@@ -281,17 +285,15 @@
     <div class="container">
         <div class="header">
             <h1>Batched-Bench Results Viewer</h1>
-            <p>Upload and visualize your llama.cpp batched-bench JSONL results</p>
+            <p>Visualizing llama.cpp batched-bench JSONL results</p>
         </div>
 
-        <div class="upload-section">
-            <div class="file-input-wrapper">
-                <input type="file" id="fileInput" accept=".jsonl,.json">
-                Select JSONL File
-            </div>
-            <div class="file-info" id="fileInfo"></div>
-            <div class="error-message" id="errorMessage"></div>
+        <div class="environment-section">
+            <h2>Environment Information</h2>
+            <div id="environmentInfo">Loading environment data...</div>
         </div>
+
+        <div class="error-message" id="errorMessage"></div>
 
         <div class="controls" id="controls">
             <div class="controls-row">
@@ -384,18 +386,18 @@
                 this.data = [];
                 this.filteredData = [];
                 this.currentSort = { field: null, order: 'asc' };
+                this.environment = {};
 
                 this.initializeEventListeners();
+                this.loadData();
             }
 
             initializeEventListeners() {
-                const fileInput = document.getElementById('fileInput');
                 const sortField = document.getElementById('sortField');
                 const sortOrder = document.getElementById('sortOrder');
                 const filterField = document.getElementById('filterField');
                 const filterValue = document.getElementById('filterValue');
 
-                fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
                 sortField.addEventListener('change', () => this.handleSort());
                 sortOrder.addEventListener('change', () => this.handleSort());
                 filterField.addEventListener('change', () => this.handleFilter());
@@ -409,29 +411,39 @@
                 });
             }
 
-            async handleFileSelect(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-
+            async loadData() {
                 try {
-                    this.showFileInfo(file);
-                    const content = await this.readFile(file);
-                    this.data = this.parseJSONL(content);
+                    await this.loadEnvironment();
+                    await this.loadResults();
                     this.filteredData = [...this.data];
                     this.displayResults();
                     this.hideError();
                 } catch (error) {
-                    this.showError(`Error processing file: ${error.message}`);
+                    this.showError(`Error loading data: ${error.message}`);
                 }
             }
 
-            readFile(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.onerror = () => reject(new Error('Failed to read file'));
-                    reader.readAsText(file);
-                });
+            async loadEnvironment() {
+                try {
+                    const response = await fetch('./environment.json');
+                    if (!response.ok) {
+                        throw new Error(`Failed to load environment.json: ${response.status} ${response.statusText}`);
+                    }
+                    this.environment = await response.json();
+                    this.displayEnvironment();
+                } catch (error) {
+                    console.warn('Could not load environment.json:', error.message);
+                    this.displayEnvironmentError();
+                }
+            }
+
+            async loadResults() {
+                const response = await fetch('./output.jsonl');
+                if (!response.ok) {
+                    throw new Error(`Failed to load output.jsonl: ${response.status} ${response.statusText}`);
+                }
+                const content = await response.text();
+                this.data = this.parseJSONL(content);
             }
 
             parseJSONL(content) {
@@ -757,14 +769,49 @@
                 this.generateStats();
             }
 
-            showFileInfo(file) {
-                const fileInfo = document.getElementById('fileInfo');
-                fileInfo.innerHTML = `
-                    <strong>File:</strong> ${file.name}<br>
-                    <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
-                    <strong>Type:</strong> ${file.type || 'Unknown'}
+            displayEnvironment() {
+                const envInfo = document.getElementById('environmentInfo');
+                const env = this.environment;
+                
+                envInfo.innerHTML = `
+                    <div class="env-grid">
+                        <div class="env-card">
+                            <h3>🕐 Benchmark Run</h3>
+                            <div class="env-detail"><strong>Timestamp:</strong> ${new Date(env.timestamp).toLocaleString()}</div>
+                            <div class="env-detail"><strong>Executable:</strong> ${env.bench_executable}</div>
+                        </div>
+                        <div class="env-card">
+                            <h3>⚙️ Arguments</h3>
+                            <div class="env-detail"><strong>Command:</strong> ${env.bench_arguments ? env.bench_arguments.join(' ') : 'N/A'}</div>
+                        </div>
+                        <div class="env-card">
+                            <h3>🖥️ CPU Information</h3>
+                            <div class="env-detail"><strong>Model:</strong> ${env.cpu_info?.model || 'N/A'}</div>
+                            <div class="env-detail"><strong>Cores:</strong> ${env.cpu_info?.cores || 'N/A'}</div>
+                        </div>
+                        <div class="env-card">
+                            <h3>🧠 Memory Information</h3>
+                            <div class="env-detail"><strong>Total:</strong> ${env.memory_info?.total_mb ? (env.memory_info.total_mb / 1024).toFixed(1) + ' GB' : 'N/A'}</div>
+                            <div class="env-detail"><strong>Available:</strong> ${env.memory_info?.available_mb ? (env.memory_info.available_mb / 1024).toFixed(1) + ' GB' : 'N/A'}</div>
+                        </div>
+                        ${env.gpu_info ? `
+                        <div class="env-card">
+                            <h3>🎮 GPU Information</h3>
+                            <div class="env-detail"><strong>GPU:</strong> ${env.gpu_info}</div>
+                        </div>
+                        ` : ''}
+                    </div>
                 `;
-                fileInfo.style.display = 'block';
+            }
+
+            displayEnvironmentError() {
+                const envInfo = document.getElementById('environmentInfo');
+                envInfo.innerHTML = `
+                    <div class="env-card">
+                        <h3>⚠️ Environment Information Unavailable</h3>
+                        <div class="env-detail">Could not load environment.json file</div>
+                    </div>
+                `;
             }
 
             showError(message) {
