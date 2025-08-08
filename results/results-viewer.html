@@ -53,6 +53,54 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
+        .arguments-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .arguments-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .arguments-container {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border-left: 4px solid #9b59b6;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            line-height: 1.6;
+        }
+
+        .argument-line {
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .argument-flag {
+            background: #8e44ad;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .argument-value {
+            color: #2c3e50;
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
         .environment-section h2 {
             color: #2c3e50;
             margin-bottom: 20px;
@@ -234,6 +282,11 @@
             <div id="environmentInfo">Loading environment data...</div>
         </div>
 
+        <div class="arguments-section">
+            <h2>⚙️ Arguments</h2>
+            <div id="argumentsInfo">Loading arguments...</div>
+        </div>
+
         <div class="error-message" id="errorMessage"></div>
 
 
@@ -310,9 +363,11 @@
                     }
                     this.environment = await response.json();
                     this.displayEnvironment();
+                    this.displayArguments();
                 } catch (error) {
                     console.warn('Could not load environment.json:', error.message);
                     this.displayEnvironmentError();
+                    this.displayArgumentsError();
                 }
             }
 
@@ -650,13 +705,6 @@
                             <div class="env-detail"><strong>Executable:</strong> ${env.bench_executable}</div>
                         </div>
                         <div class="env-card">
-                            <h3>⚙️ Arguments</h3>
-                            <div class="env-detail"><strong>Command:</strong></div>
-                            <div style="margin-left: 10px; font-family: monospace; font-size: 0.85em; line-height: 1.4;">
-                                ${env.bench_arguments ? env.bench_arguments.map(arg => `<div>${arg}</div>`).join('') : '<div>N/A</div>'}
-                            </div>
-                        </div>
-                        <div class="env-card">
                             <h3>🖥️ CPU Information</h3>
                             <div class="env-detail"><strong>Model:</strong> ${env.cpu_info?.model || 'N/A'}</div>
                             <div class="env-detail"><strong>Cores:</strong> ${env.cpu_info?.cores || 'N/A'}</div>
@@ -673,6 +721,74 @@
                             <div class="env-detail"><strong>Memory:</strong> ${env.gpu_info.memory_total_mb ? (env.gpu_info.memory_total_mb / 1024).toFixed(1) + ' GB' : 'N/A'}</div>
                         </div>
                         ` : ''}
+                    </div>
+                `;
+            }
+
+            displayArguments() {
+                const argsInfo = document.getElementById('argumentsInfo');
+                const env = this.environment;
+                
+                if (!env.bench_arguments || env.bench_arguments.length === 0) {
+                    argsInfo.innerHTML = `
+                        <div class="arguments-container">
+                            <div class="env-detail">No arguments available</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const formattedArgs = this.formatArguments(env.bench_arguments);
+                argsInfo.innerHTML = `
+                    <div class="arguments-container">
+                        ${formattedArgs}
+                    </div>
+                `;
+            }
+
+            formatArguments(args) {
+                const lines = [];
+                let currentLine = [];
+                
+                for (let i = 0; i < args.length; i++) {
+                    const arg = args[i];
+                    
+                    // Check if this is a flag (starts with - or --)
+                    if (arg.startsWith('-')) {
+                        // If we have items in current line, finish it
+                        if (currentLine.length > 0) {
+                            lines.push(currentLine.join(''));
+                            currentLine = [];
+                        }
+                        
+                        // Start new line with the flag
+                        currentLine.push(`<span class="argument-flag">${arg}</span>`);
+                        
+                        // Check if next argument is a value (doesn't start with -)
+                        if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                            currentLine.push(` <span class="argument-value">${args[i + 1]}</span>`);
+                            i++; // Skip the next argument as we've processed it
+                        }
+                    } else {
+                        // This is a standalone value (shouldn't happen in well-formed args)
+                        currentLine.push(` <span class="argument-value">${arg}</span>`);
+                    }
+                }
+                
+                // Add the last line if it has content
+                if (currentLine.length > 0) {
+                    lines.push(currentLine.join(''));
+                }
+                
+                // Format each line with proper spacing
+                return lines.map(line => `<div class="argument-line">${line}</div>`).join('');
+            }
+
+            displayArgumentsError() {
+                const argsInfo = document.getElementById('argumentsInfo');
+                argsInfo.innerHTML = `
+                    <div class="arguments-container">
+                        <div class="env-detail">⚠️ Arguments information unavailable</div>
                     </div>
                 `;
             }
