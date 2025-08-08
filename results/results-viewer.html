@@ -651,7 +651,10 @@
                         </div>
                         <div class="env-card">
                             <h3>⚙️ Arguments</h3>
-                            <div class="env-detail"><strong>Command:</strong> ${env.bench_arguments ? env.bench_arguments.join(' ') : 'N/A'}</div>
+                            <div class="env-detail"><strong>Command:</strong></div>
+                            <div style="margin-left: 10px; font-family: monospace; font-size: 0.85em; line-height: 1.4;">
+                                ${env.bench_arguments ? env.bench_arguments.map(arg => `<div>${arg}</div>`).join('') : '<div>N/A</div>'}
+                            </div>
                         </div>
                         <div class="env-card">
                             <h3>🖥️ CPU Information</h3>
@@ -666,7 +669,8 @@
                         ${env.gpu_info ? `
                         <div class="env-card">
                             <h3>🎮 GPU Information</h3>
-                            <div class="env-detail"><strong>GPU:</strong> ${env.gpu_info}</div>
+                            <div class="env-detail"><strong>Model:</strong> ${env.gpu_info.name || 'N/A'}</div>
+                            <div class="env-detail"><strong>Memory:</strong> ${env.gpu_info.memory_total_mb ? (env.gpu_info.memory_total_mb / 1024).toFixed(1) + ' GB' : 'N/A'}</div>
                         </div>
                         ` : ''}
                     </div>
