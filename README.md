@@ -47,10 +47,15 @@ Specify a custom output directory:
 
 ## Output Files
 
-The script generates the following files in the `results/` directory:
+The script generates the following files in timestamp-based directories under `results/`:
+
+Each execution creates a new directory with the format `results/YYYYMMDD_HHMMSS/` containing:
 
 1. **Benchmark Results** (`output.jsonl`): Contains line-by-line test results.
 2. **Environment Metadata** (`environment.json`): Includes system information and test parameters.
+3. **Results Viewer** (`index.html`): HTML interface for viewing and analyzing results.
+
+This allows you to keep multiple test runs organized by execution time.
 
 ### Example JSONL Output
 
