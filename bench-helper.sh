@@ -150,8 +150,8 @@ main() {
             # Copy results-viewer.html to the output directory after successful execution
             VIEWER_SOURCE="$BASE_DIR/results/results-viewer.html"
             if [ -f "$VIEWER_SOURCE" ]; then
-                cp "$VIEWER_SOURCE" "$OUTPUT_DIR/results-viewer.html"
-                echo "Results viewer copied to: $OUTPUT_DIR/results-viewer.html"
+                cp "$VIEWER_SOURCE" "$OUTPUT_DIR/index.html"
+                echo "Results viewer copied to: $OUTPUT_DIR/index.html"
             else
                 echo "Warning: Results viewer not found at $VIEWER_SOURCE"
             fi

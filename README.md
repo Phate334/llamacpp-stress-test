@@ -53,7 +53,7 @@ Each execution creates a new directory with the format `results/YYYYMMDD_HHMMSS/
 
 1. **Benchmark Results** (`output.jsonl`): Contains line-by-line test results.
 2. **Environment Metadata** (`environment.json`): Includes system information and test parameters.
-3. **Results Viewer** (`results-viewer.html`): HTML interface for viewing and analyzing results.
+3. **Results Viewer** (`index.html`): HTML interface for viewing and analyzing results.
 
 This allows you to keep multiple test runs organized by execution time.
 
