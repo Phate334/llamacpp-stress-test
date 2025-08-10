@@ -7,8 +7,9 @@ BASE_DIR="$(dirname "$(realpath "$0")")"
 BENCH_ARGS=()
 
 # Default values
-OUTPUT_DIR=$BASE_DIR/results
 BENCH_EXECUTABLE="/app/llama-batched-bench"
+# Use custom output dir if provided, otherwise create timestamp-based directory
+CUSTOM_OUTPUT_DIR=""
 
 # Function to show help by calling the bench executable
 show_help() {
@@ -28,7 +29,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         -o|--output-dir)
-            OUTPUT_DIR="$2"
+            CUSTOM_OUTPUT_DIR="$2"
             shift 2
             ;;
         --output-format)
@@ -115,6 +116,15 @@ EOF
 
 # Main execution
 main() {
+    # Create timestamp-based output directory if custom output dir is not provided
+    if [ -n "$CUSTOM_OUTPUT_DIR" ]; then
+        OUTPUT_DIR="$CUSTOM_OUTPUT_DIR"
+    else
+        # Create timestamp in format: YYYYMMDD_HHMMSS
+        TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+        OUTPUT_DIR="$BASE_DIR/results/$TIMESTAMP"
+    fi
+    
     # Create output directory if it doesn't exist
     mkdir -p "$OUTPUT_DIR"
     
@@ -136,6 +146,15 @@ main() {
             # Force output format to jsonl and redirect to output file
             "$BENCH_EXECUTABLE" "${BENCH_ARGS[@]}" --output-format jsonl > "$OUTPUT_FILE"
             echo "Results saved to: $OUTPUT_FILE"
+            
+            # Copy results-viewer.html to the output directory after successful execution
+            VIEWER_SOURCE="$BASE_DIR/results/results-viewer.html"
+            if [ -f "$VIEWER_SOURCE" ]; then
+                cp "$VIEWER_SOURCE" "$OUTPUT_DIR/results-viewer.html"
+                echo "Results viewer copied to: $OUTPUT_DIR/results-viewer.html"
+            else
+                echo "Warning: Results viewer not found at $VIEWER_SOURCE"
+            fi
         else
             echo "Error: BENCH_EXECUTABLE ($BENCH_EXECUTABLE) not found or not executable" >&2
             exit 1
