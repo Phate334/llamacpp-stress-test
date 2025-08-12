@@ -1,8 +1,6 @@
 # Test outputs
-results/*.json
-results/*.jsonl
-results/stress_test_*.jsonl
-results/meta_*.json
+results/**/*.json
+results/**/*.jsonl
 !results/*.html
 
 # Log files

@@ -15,5 +15,12 @@ services:
       "-ctv", "q8_0",
       "-npp", "256",
       "-ntg", "128",
-      "-npl", "1,2,3,4,5,6,7,8,9,10"
+      "-npl", "1,2,3,4,5"
     ]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
