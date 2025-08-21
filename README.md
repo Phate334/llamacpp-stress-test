@@ -1,49 +1,47 @@
 # llama.cpp Stress Test Helper
 
-This repository provides a bash script wrapper for llama.cpp's `batched-bench` tool, designed to simplify benchmarking and stress testing while ensuring consistent output and metadata collection.
-
-## Overview
-
-The `bench-helper.sh` script automates the execution of `llama-batched-bench` with the following features:
-
-- **JSONL Output**: Results are saved in JSON Lines format for easy parsing and analysis.
-- **Environment Metadata**: Captures system information, GPU details, and test parameters.
-- **Error Handling**: Ensures graceful handling of missing executables or invalid configurations.
-- **Output Management**: Saves results and environment metadata in the `results/` directory.
-
-## Features
-
-- **Automatic Metadata Collection**: Captures CPU, GPU, and memory information.
-- **JSONL Output Enforcement**: Forces output format to JSONL for consistency.
-- **Flexible Argument Handling**: Supports all `llama-batched-bench` parameters.
-- **Environment Information**: Saves environment details in a separate JSON file.
+This repository provides a bash wrapper for llama.cpp's `llama-batched-bench`, used via Docker containers only: mount `bench-helper.sh` into the official llama.cpp image and run it to collect results. Inside the container, the bench executable path is `/app/llama-batched-bench`.
 
 ## Usage
 
-### Basic Execution
+Use this tool via Docker containers by mounting the script into the official llama.cpp image (bench path: `/app/llama-batched-bench`).
 
-Run the script with `llama-batched-bench` arguments:
+### Docker Compose (recommended)
 
-```bash
-./bench-helper.sh -m model.gguf -c 2048 -b 512 -ub 256 -ngl 99
-```
-
-### Advanced Benchmarking
-
-Include additional parameters for detailed testing:
+Edit `compose.yaml` if needed, then run:
 
 ```bash
-./bench-helper.sh -m model.gguf -c 4096 -b 1024 -ub 512 -ngl 99 \
-    -npp 128,256,512 -ntg 128,256 -npl 1,2,4,8,16,32
+docker compose up app
 ```
 
-### Output Directory
-
-Specify a custom output directory:
+Results will be saved under `results/YYYYMMDD_HHMMSS/`. To browse past runs with a simple HTTP server:
 
 ```bash
-./bench-helper.sh -o /path/to/output -m model.gguf -c 2048 -b 512
+docker compose up server
+# Open http://localhost:8000
 ```
+
+### One-line Docker run (matches compose.yaml)
+
+```bash
+docker run --rm --gpus all \
+  -v "$(pwd)/models:/app/models" \
+  -v "$(pwd)/results:/app/results" \
+  -v "$(pwd)/bench-helper.sh:/app/bench-helper.sh" \
+  --entrypoint /app/bench-helper.sh \
+  ghcr.io/ggml-org/llama.cpp:full-cuda-b6055 \
+  -m /app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf \
+  -ngl 99 -c 4096 -fa -ctk q8_0 -ctv q8_0 \
+  -npp 256 -ntg 128 -npl 1,2,3,4,5
+```
+
+### Script behavior and options
+
+- Forces `--output-format jsonl` for consistent parsing. Any user-provided `--output-format` is ignored with a warning.
+- `-o, --output-dir DIR`: save into a custom directory; otherwise creates `results/YYYYMMDD_HHMMSS/`.
+- `-h, --help`: proxies to `/app/llama-batched-bench -h` inside the container.
+- Copies `results/results-viewer.html` to `index.html` in each run directory.
+- Captures environment info (GPU via nvidia-smi, CPU, RAM) before running the bench.
 
 ## Output Files
 
@@ -87,21 +85,26 @@ This allows you to keep multiple test runs organized by execution time.
 
 ## Prerequisites
 
-- `llama-batched-bench` executable from llama.cpp
-- CUDA-compatible GPU
-- Model files in GGUF format
-- `nvidia-smi` for GPU information collection
+- CUDA-compatible GPU and NVIDIA driver (for Docker `--gpus all`)
+- Model files in GGUF format under `models/`
+- The official llama.cpp Docker image (pinned in `compose.yaml`)
+- `nvidia-smi` available in the container to collect GPU info
 
-## Installation
+## Quick setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/Phate334/llamacpp-stress-test.git
 cd llamacpp-stress-test
 
-# Make the script executable
+# Make the script executable (if needed for local runs)
 chmod +x bench-helper.sh
 ```
+
+## References
+
+- See `batched-bench.md` for example usage and JSONL schema.
+- See `batched-bench-help.md` for the full CLI options of `llama-batched-bench`.
 
 ## License
 

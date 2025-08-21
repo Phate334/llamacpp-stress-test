@@ -1,49 +1,47 @@
 # llama.cpp 壓力測試輔助工具
 
-此專案提供一個 bash 腳本，作為 llama.cpp 的 `batched-bench` 工具的包裝器，旨在簡化基準測試和壓力測試，同時確保一致的輸出和元數據收集。
-
-## 概述
-
-`bench-helper.sh` 腳本自動化執行 `llama-batched-bench`，具備以下功能：
-
-- **JSONL 輸出**：結果以 JSON Lines 格式保存，方便解析和分析。
-- **環境元數據**：收集系統資訊、GPU 詳細資料及測試參數。
-- **錯誤處理**：確保在執行檔缺失或配置無效時能夠優雅地處理。
-- **輸出管理**：將結果和環境元數據保存到 `results/` 目錄中。
-
-## 功能
-
-- **自動元數據收集**：收集 CPU、GPU 和記憶體資訊。
-- **強制 JSONL 輸出**：強制輸出格式為 JSONL，確保一致性。
-- **靈活的參數處理**：支援所有 `llama-batched-bench` 的參數。
-- **環境資訊保存**：將環境詳細資料保存到獨立的 JSON 檔案中。
+此專案提供一個 bash 腳本，作為 llama.cpp 的 `llama-batched-bench` 包裝器，僅透過 Docker 容器使用：將 `bench-helper.sh` 掛載到官方 llama.cpp 映像並執行以取得結果。容器內的 bench 執行檔路徑為 `/app/llama-batched-bench`。
 
 ## 使用方法
 
-### 基本執行
+此工具以 Docker 容器為唯一操作方式：將腳本掛載至官方 llama.cpp 映像（bench 路徑：`/app/llama-batched-bench`）。
 
-使用 `llama-batched-bench` 的參數執行腳本：
+### 使用 Docker Compose（建議）
 
-```bash
-./bench-helper.sh -m model.gguf -c 2048 -b 512 -ub 256 -ngl 99
-```
-
-### 進階基準測試
-
-加入額外參數進行詳細測試：
+如有需要可編輯 `compose.yaml`，然後執行：
 
 ```bash
-./bench-helper.sh -m model.gguf -c 4096 -b 1024 -ub 512 -ngl 99 \
-    -npp 128,256,512 -ntg 128,256 -npl 1,2,4,8,16,32
+docker compose up app
 ```
 
-### 指定輸出目錄
-
-指定自定義的輸出目錄：
+結果會保存在 `results/YYYYMMDD_HHMMSS/`。要用簡單的 HTTP 伺服器瀏覽過往結果：
 
 ```bash
-./bench-helper.sh -o /path/to/output -m model.gguf -c 2048 -b 512
+docker compose up server
+# 開啟 http://localhost:8000
 ```
+
+### 一行指令執行 Docker（與 compose.yaml 一致）
+
+```bash
+docker run --rm --gpus all \
+  -v "$(pwd)/models:/app/models" \
+  -v "$(pwd)/results:/app/results" \
+  -v "$(pwd)/bench-helper.sh:/app/bench-helper.sh" \
+  --entrypoint /app/bench-helper.sh \
+  ghcr.io/ggml-org/llama.cpp:full-cuda-b6055 \
+  -m /app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf \
+  -ngl 99 -c 4096 -fa -ctk q8_0 -ctv q8_0 \
+  -npp 256 -ntg 128 -npl 1,2,3,4,5
+```
+
+### 腳本行為與選項
+
+- 強制加上 `--output-format jsonl`。若使用者提供該選項會被忽略並提示警告。
+- `-o, --output-dir DIR`：自訂輸出目錄；否則建立 `results/YYYYMMDD_HHMMSS/`。
+- `-h, --help`：轉呼叫容器內 `/app/llama-batched-bench -h`。
+- 成功執行後會將 `results/results-viewer.html` 複製為每次執行目錄的 `index.html`。
+- 執行前會保存環境資訊（nvidia-smi、CPU、RAM）。
 
 ## 輸出檔案
 
@@ -87,21 +85,26 @@
 
 ## 先決條件
 
-- `llama-batched-bench` 可執行檔來自 llama.cpp
-- 支援 CUDA 的 GPU
-- GGUF 格式的模型檔案
-- 用於收集 GPU 資訊的 `nvidia-smi`
+- 具備 CUDA 的 GPU 與 NVIDIA 驅動（Docker 需 `--gpus all`）
+- GGUF 模型檔案放在 `models/`
+- 官方 llama.cpp Docker 映像（版本已在 `compose.yaml` 鎖定）
+- 容器中可用的 `nvidia-smi` 以收集 GPU 資訊
 
-## 安裝
+## 快速安裝
 
 ```bash
 # 克隆此專案
 git clone https://github.com/Phate334/llamacpp-stress-test.git
 cd llamacpp-stress-test
 
-# 使腳本可執行
+# 使腳本可執行（若需本機執行）
 chmod +x bench-helper.sh
 ```
+
+## 參考文件
+
+- 請見 `batched-bench.md` 以了解範例用法與 JSONL 格式。
+- 請見 `batched-bench-help.md` 以查看 `llama-batched-bench` 完整參數。
 
 ## 授權
 

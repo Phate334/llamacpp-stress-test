@@ -24,3 +24,11 @@ services:
             - driver: nvidia
               device_ids: ["0"]
               capabilities: [gpu]
+
+  server:
+    image: python:3.13-slim
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./results:/app
+    command: python -m http.server -d /app
