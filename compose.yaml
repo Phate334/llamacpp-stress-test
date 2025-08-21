@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6055
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6222
     volumes:
       - ./models:/app/models
       - ./results:/app/results
