@@ -1,22 +1,12 @@
 services:
   app:
-    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6222
+    build: .
+    ports:
+      - 8000:8000
     volumes:
-      - ./models:/app/models
+      - ./model-cache:/root/.cache/llama.cpp
       - ./results:/app/results
       - ./bench-helper.sh:/app/bench-helper.sh
-    entrypoint: ["/app/bench-helper.sh"]
-    command: [
-      "-m", "/app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf",
-      "-ngl", "99",
-      "-c", "4096",
-      "-fa",
-      "-ctk", "q8_0",
-      "-ctv", "q8_0",
-      "-npp", "256",
-      "-ntg", "128",
-      "-npl", "1,2,3,4,5"
-    ]
     deploy:
       resources:
         reservations:
@@ -24,11 +14,3 @@ services:
             - driver: nvidia
               device_ids: ["0"]
               capabilities: [gpu]
-
-  server:
-    image: python:3.13-slim
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./results:/app
-    command: python -m http.server -d /app
