@@ -146,15 +146,6 @@ main() {
             # Force output format to jsonl and redirect to output file
             "$BENCH_EXECUTABLE" "${BENCH_ARGS[@]}" --output-format jsonl > "$OUTPUT_FILE"
             echo "Results saved to: $OUTPUT_FILE"
-            
-            # Copy results-viewer.html to the output directory after successful execution
-            VIEWER_SOURCE="$BASE_DIR/results/results-viewer.html"
-            if [ -f "$VIEWER_SOURCE" ]; then
-                cp "$VIEWER_SOURCE" "$OUTPUT_DIR/index.html"
-                echo "Results viewer copied to: $OUTPUT_DIR/index.html"
-            else
-                echo "Warning: Results viewer not found at $VIEWER_SOURCE"
-            fi
         else
             echo "Error: BENCH_EXECUTABLE ($BENCH_EXECUTABLE) not found or not executable" >&2
             exit 1

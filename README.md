@@ -40,7 +40,6 @@ docker run --rm --gpus all \
 - Forces `--output-format jsonl` for consistent parsing. Any user-provided `--output-format` is ignored with a warning.
 - `-o, --output-dir DIR`: save into a custom directory; otherwise creates `results/YYYYMMDD_HHMMSS/`.
 - `-h, --help`: proxies to `/app/llama-batched-bench -h` inside the container.
-- Copies `results/results-viewer.html` to `index.html` in each run directory.
 - Captures environment info (GPU via nvidia-smi, CPU, RAM) before running the bench.
 
 ## Output Files
@@ -86,7 +85,6 @@ This allows you to keep multiple test runs organized by execution time.
 ## Prerequisites
 
 - CUDA-compatible GPU and NVIDIA driver (for Docker `--gpus all`)
-- Model files in GGUF format under `models/`
 - The official llama.cpp Docker image (pinned in `compose.yaml`)
 - `nvidia-smi` available in the container to collect GPU info
 
@@ -100,15 +98,6 @@ cd llamacpp-stress-test
 # Make the script executable (if needed for local runs)
 chmod +x bench-helper.sh
 ```
-
-## References
-
-- See `batched-bench.md` for example usage and JSONL schema.
-- See `batched-bench-help.md` for the full CLI options of `llama-batched-bench`.
-
-## License
-
-This project is licensed under the same license as the repository it belongs to.
 
 ## Acknowledgments
 

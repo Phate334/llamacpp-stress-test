@@ -40,7 +40,6 @@ docker run --rm --gpus all \
 - 強制加上 `--output-format jsonl`。若使用者提供該選項會被忽略並提示警告。
 - `-o, --output-dir DIR`：自訂輸出目錄；否則建立 `results/YYYYMMDD_HHMMSS/`。
 - `-h, --help`：轉呼叫容器內 `/app/llama-batched-bench -h`。
-- 成功執行後會將 `results/results-viewer.html` 複製為每次執行目錄的 `index.html`。
 - 執行前會保存環境資訊（nvidia-smi、CPU、RAM）。
 
 ## 輸出檔案
@@ -86,29 +85,18 @@ docker run --rm --gpus all \
 ## 先決條件
 
 - 具備 CUDA 的 GPU 與 NVIDIA 驅動（Docker 需 `--gpus all`）
-- GGUF 模型檔案放在 `models/`
 - 官方 llama.cpp Docker 映像（版本已在 `compose.yaml` 鎖定）
 - 容器中可用的 `nvidia-smi` 以收集 GPU 資訊
 
 ## 快速安裝
 
 ```bash
-# 克隆此專案
 git clone https://github.com/Phate334/llamacpp-stress-test.git
 cd llamacpp-stress-test
 
 # 使腳本可執行（若需本機執行）
 chmod +x bench-helper.sh
 ```
-
-## 參考文件
-
-- 請見 `batched-bench.md` 以了解範例用法與 JSONL 格式。
-- 請見 `batched-bench-help.md` 以查看 `llama-batched-bench` 完整參數。
-
-## 授權
-
-此專案的授權與其所屬的存儲庫相同。
 
 ## 致謝
 
