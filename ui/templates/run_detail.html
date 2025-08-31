@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ project_name }} - {{ run_id }}</title>
+  <link rel="stylesheet" href="/static/charts.min.css" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; }
+    h1 { font-size: 1.3rem; }
+    pre { background:#222; color:#eee; padding:1rem; overflow:auto; }
+    table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+    th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+    th { background: #f0f0f0; position: sticky; top:0; }
+    .nowrap { white-space: nowrap; }
+    details { margin: .5rem 0; }
+  </style>
+</head>
+<body>
+  <p><a href="/">← 回列表</a></p>
+  <h1>執行結果：{{ run_id }}</h1>
+  <section>
+    <h2>environment.json</h2>
+    <pre id="env-json"></pre>
+  </section>
+  <section>
+    <h2>output.jsonl (全部資料)</h2>
+    <div id="output-table">載入中...</div>
+  </section>
+  <script>
+    async function loadEnv() {
+      const r = await fetch(`/api/runs/{{ run_id }}/environment`);
+      const data = await r.json();
+      document.getElementById('env-json').textContent = JSON.stringify(data, null, 2);
+    }
+    function inferColumns(rows) {
+      const keys = new Set();
+      rows.forEach(o => Object.keys(o).forEach(k => keys.add(k)));
+      return Array.from(keys);
+    }
+    function escapeHtml(s){return s==null?"":String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+    async function loadOutput() {
+      const r = await fetch(`/api/runs/{{ run_id }}/output`);
+      const data = await r.json();
+      const rows = data.rows || [];
+      if(!rows.length){ document.getElementById('output-table').textContent='無資料'; return; }
+      const cols = inferColumns(rows);
+      let html = '<table><thead><tr>'; cols.forEach(c=> html+=`<th>${escapeHtml(c)}</th>`); html+='</tr></thead><tbody>';
+      rows.forEach(o=>{ html+='<tr>'; cols.forEach(c=>{ const v=o[c]; html+=`<td>${escapeHtml(v)}</td>`}); html+='</tr>'; });
+      html+='</tbody></table>';
+      document.getElementById('output-table').innerHTML = html;
+    }
+    loadEnv();
+    loadOutput();
+  </script>
+</body>
+</html>
