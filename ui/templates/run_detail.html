@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+
+<head>
+    <meta charset="utf-8" />
+    <title>{{ project_name }} - {{ run_id }}</title>
+    <link rel="stylesheet" href="/static/bulma.min.css" />
+    <link rel="stylesheet" href="/static/charts.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Inspired by results-viewer.html styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .run-id-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .environment-section {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .environment-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .env-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .env-card {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .env-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .env-detail {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .env-detail strong {
+            color: #2c3e50;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .table-container {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .table-header {
+            padding: 20px;
+            background: #34495e;
+            color: #fff;
+        }
+
+        .table-header h2 {
+            margin-bottom: 10px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 500px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            position: sticky;
+            top: 0;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .navbar {
+            background: #fff;
+            padding: 1rem 0;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand a {
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 1.5em;
+            text-decoration: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar" role="navigation">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="/">{{ project_name }}</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 執行結果詳細</h1>
+            <p>Run ID: <span class="run-id-mono">{{ run_id }}</span></p>
+        </div>
+
+        <div id="stats-section" class="stats-overview" style="display: none;">
+            <!-- Stats will be populated by JavaScript -->
+        </div>
+
+        <div class="environment-section">
+            <h2>🔧 執行環境資訊</h2>
+            <div id="environment-info" class="loading">載入中...</div>
+        </div>
+
+        <div id="charts-section" class="charts-section" style="display: none;">
+            <div class="chart-container">
+                <h3>📈 效能趨勢圖</h3>
+                <canvas id="performanceChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>⏱️ 時間分布圖</h3>
+                <canvas id="timeDistributionChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h2>📋 詳細測試結果</h2>
+                <p style="margin: 0; opacity: 0.8;">所有測試數據的完整記錄</p>
+            </div>
+            <div id="results-table" class="table-wrapper loading">載入中...</div>
+        </div>
+    </div>
+
+    <script>
+        let chartData = [];
+
+        async function loadEnvironment() {
+            try {
+                const response = await fetch(`/api/runs/{{ run_id }}/environment`);
+                const data = await response.json();
+                displayEnvironment(data);
+            } catch (error) {
+                document.getElementById('environment-info').innerHTML = 
+                    '<div class="error-message">⚠️ 無法載入環境資訊</div>';
+            }
+        }
+
+        function displayEnvironment(data) {
+            const envInfo = document.getElementById('environment-info');
+            let html = '<div class="env-grid">';
+            
+            // GPU Info
+            if (data.gpu_info) {
+                html += `
+                    <div class="env-card">
+                        <h3>🎮 GPU 資訊</h3>
+                        <div class="env-detail"><strong>型號:</strong> ${data.gpu_info.name || 'N/A'}</div>
+                        <div class="env-detail"><strong>記憶體:</strong> ${data.gpu_info.memory_total_mb || 'N/A'} MB</div>
+                    </div>
+                `;
+            }
+
+            // CPU Info
+            if (data.cpu_info) {
+                html += `
+                    <div class="env-card">
+                        <h3>💻 CPU 資訊</h3>
+                        <div class="env-detail"><strong>型號:</strong> ${data.cpu_info.model || 'N/A'}</div>
+                        <div class="env-detail"><strong>核心數:</strong> ${data.cpu_info.cores || 'N/A'}</div>
+                    </div>
+                `;
+            }
+
+            // Memory Info
+            if (data.memory_info) {
+                html += `
+                    <div class="env-card">
+                        <h3>🧠 記憶體資訊</h3>
+                        <div class="env-detail"><strong>總量:</strong> ${data.memory_info.total_mb || 'N/A'} MB</div>
+                        <div class="env-detail"><strong>可用:</strong> ${data.memory_info.available_mb || 'N/A'} MB</div>
+                    </div>
+                `;
+            }
+
+            // Benchmark Info
+            if (data.bench_arguments) {
+                html += `
+                    <div class="env-card">
+                        <h3>⚙️ 測試參數</h3>
+                        <div class="env-detail"><strong>執行時間:</strong> ${data.timestamp || 'N/A'}</div>
+                        <div class="env-detail"><strong>參數:</strong> ${data.bench_arguments.join(' ') || 'N/A'}</div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            envInfo.innerHTML = html;
+        }
+
+        async function loadResults() {
+            try {
+                const response = await fetch(`/api/runs/{{ run_id }}/output`);
+                const data = await response.json();
+                const rows = data.rows || [];
+                
+                if (!rows.length) {
+                    document.getElementById('results-table').innerHTML = 
+                        '<div class="error-message">⚠️ 無測試結果資料</div>';
+                    return;
+                }
+
+                chartData = rows;
+                displayResults(rows);
+                displayStats(rows);
+                createCharts(rows);
+            } catch (error) {
+                document.getElementById('results-table').innerHTML = 
+                    '<div class="error-message">⚠️ 無法載入測試結果</div>';
+            }
+        }
+
+        function displayStats(rows) {
+            if (!rows.length) return;
+
+            const statsSection = document.getElementById('stats-section');
+            let html = '';
+
+            // Calculate basic stats
+            const totalRuns = rows.length;
+            let avgSpeed = 0;
+            let maxSpeed = 0;
+            
+            if (rows[0].hasOwnProperty('speed_pp') || rows[0].hasOwnProperty('speed_tg')) {
+                const speeds = rows.map(r => r.speed_pp || r.speed_tg || 0);
+                avgSpeed = (speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(2);
+                maxSpeed = Math.max(...speeds).toFixed(2);
+            }
+
+            html = `
+                <div class="stat-card">
+                    <h3>總測試次數</h3>
+                    <div class="value">${totalRuns}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>平均速度</h3>
+                    <div class="value">${avgSpeed}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>最高速度</h3>
+                    <div class="value">${maxSpeed}</div>
+                </div>
+            `;
+
+            statsSection.innerHTML = html;
+            statsSection.style.display = 'grid';
+        }
+
+        function displayResults(rows) {
+            const cols = inferColumns(rows);
+            let html = '<table><thead><tr>';
+            cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+            html += '</tr></thead><tbody>';
+            
+            rows.forEach(row => {
+                html += '<tr>';
+                cols.forEach(col => {
+                    const value = row[col];
+                    html += `<td>${escapeHtml(value)}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('results-table').innerHTML = html;
+        }
+
+        function createCharts(rows) {
+            if (!rows.length) return;
+
+            const chartsSection = document.getElementById('charts-section');
+            chartsSection.style.display = 'grid';
+
+            // Performance Chart
+            if (rows[0].hasOwnProperty('speed_pp') || rows[0].hasOwnProperty('speed_tg')) {
+                createPerformanceChart(rows);
+            }
+
+            // Time Distribution Chart  
+            if (rows[0].hasOwnProperty('time_pp') || rows[0].hasOwnProperty('time_tg')) {
+                createTimeDistributionChart(rows);
+            }
+        }
+
+        function createPerformanceChart(rows) {
+            const ctx = document.getElementById('performanceChart');
+            if (!ctx) return;
+
+            const labels = rows.map((_, i) => `Run ${i + 1}`);
+            const speedData = rows.map(r => r.speed_pp || r.speed_tg || 0);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '速度 (tokens/s)',
+                        data: speedData,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTimeDistributionChart(rows) {
+            const ctx = document.getElementById('timeDistributionChart');
+            if (!ctx) return;
+
+            const timeData = rows.map(r => r.time_pp || r.time_tg || 0);
+            const labels = rows.map((_, i) => `Run ${i + 1}`);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '執行時間 (ms)',
+                        data: timeData,
+                        backgroundColor: 'rgba(155, 89, 182, 0.6)',
+                        borderColor: '#9b59b6',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function inferColumns(rows) {
+            const keys = new Set();
+            rows.forEach(o => Object.keys(o).forEach(k => keys.add(k)));
+            return Array.from(keys);
+        }
+
+        function escapeHtml(s) { 
+            return s == null ? "" : String(s).replace(/[&<>"]/g, c => ({ 
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" 
+            }[c])); 
+        }
+
+        // Initialize
+        loadEnvironment();
+        loadResults();
+    </script>
+</body>
+
+</html>

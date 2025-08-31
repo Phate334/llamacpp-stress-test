@@ -1,0 +1,123 @@
+/* Charts CSS for data visualization */
+.chart-container {
+  position: relative;
+  height: 400px;
+  width: 100%;
+}
+
+.chart-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* Data visualization styles */
+.data-point {
+  fill: #3498db;
+  stroke: #2980b9;
+  stroke-width: 2;
+}
+
+.data-point:hover {
+  fill: #2980b9;
+  stroke: #1f4e79;
+}
+
+.chart-axis {
+  stroke: #bdc3c7;
+  stroke-width: 1;
+}
+
+.chart-grid {
+  stroke: #ecf0f1;
+  stroke-width: 0.5;
+  stroke-dasharray: 2,2;
+}
+
+.chart-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  fill: #7f8c8d;
+}
+
+.chart-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  fill: #2c3e50;
+}
+
+/* Performance chart specific styles */
+.performance-line {
+  stroke: #e74c3c;
+  stroke-width: 3;
+  fill: none;
+}
+
+.performance-area {
+  fill: rgba(231, 76, 60, 0.1);
+}
+
+/* Time distribution chart styles */
+.time-bar {
+  fill: #9b59b6;
+}
+
+.time-bar:hover {
+  fill: #8e44ad;
+}
+
+/* Legend styles */
+.chart-legend {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
+}
+
+.legend-item {
+  display: inline-block;
+  margin-right: 15px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Tooltip styles */
+.chart-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Animation classes */
+.chart-enter {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.chart-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.chart-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.chart-exit-active {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
