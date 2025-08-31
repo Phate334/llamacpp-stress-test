@@ -402,40 +402,79 @@
 
             async loadResults() {
                 try {
-                    // First try to get the directory listing JSON
-                    const response = await fetch('/directory-listing.json');
+                    // Fetch root directory listing to get all directories
+                    const resultDirs = await this.fetchDirectoryListing('/');
                     
-                    let resultDirs = [];
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        resultDirs = data.directories || [];
-                    } else {
-                        // Fallback: try known directories
-                        const knownDirs = ['20250830_072542'];
-                        
-                        for (const dir of knownDirs) {
-                            try {
-                                const testResponse = await fetch(`/${dir}/environment.json`);
-                                if (testResponse.ok) {
-                                    resultDirs.push(dir);
-                                }
-                            } catch (e) {
-                                // Directory doesn't exist
-                            }
-                        }
-                    }
+                    // Filter for directories that look like experiment results (timestamp format)
+                    const experimentDirs = resultDirs.filter(dir => {
+                        // Look for YYYYMMDD_HHMMSS pattern
+                        return /^\d{8}_\d{6}$/.test(dir);
+                    });
                     
                     // Sort by timestamp (newest first)
-                    resultDirs.sort((a, b) => b.localeCompare(a));
+                    experimentDirs.sort((a, b) => b.localeCompare(a));
                     
-                    this.results = resultDirs;
+                    this.results = experimentDirs;
                     await this.renderResultList();
                     
                 } catch (error) {
                     console.error('Error loading results:', error);
                     this.showError('Failed to load test results. Make sure the server is running and results directory is accessible.');
                 }
+            }
+
+            async fetchDirectoryListing(path) {
+                try {
+                    const response = await fetch(path);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch directory listing: ${response.status}`);
+                    }
+                    
+                    const html = await response.text();
+                    return this.parseDirectoryListing(html);
+                } catch (error) {
+                    console.error('Error fetching directory listing:', error);
+                    throw error;
+                }
+            }
+
+            parseDirectoryListing(html) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const directories = [];
+                
+                // Try to parse Apache-style directory listing
+                const links = doc.querySelectorAll('a[href]');
+                for (const link of links) {
+                    const href = link.getAttribute('href');
+                    // Skip parent directory link and files
+                    if (href === '../' || href.includes('.')) continue;
+                    
+                    // Extract directory name (remove trailing slash)
+                    const dirName = href.replace(/\/$/, '');
+                    if (dirName && dirName !== '..') {
+                        directories.push(dirName);
+                    }
+                }
+                
+                // If Apache-style parsing didn't work, try alternative approaches
+                if (directories.length === 0) {
+                    // Try to find directories in pre-formatted text (nginx style)
+                    const preElements = doc.querySelectorAll('pre');
+                    for (const pre of preElements) {
+                        const text = pre.textContent;
+                        const lines = text.split('\n');
+                        for (const line of lines) {
+                            // Look for directory indicators
+                            const dirMatch = line.match(/(\d{8}_\d{6})\//);
+                            if (dirMatch) {
+                                directories.push(dirMatch[1]);
+                            }
+                        }
+                    }
+                }
+                
+                return directories;
             }
 
             async renderResultList() {
