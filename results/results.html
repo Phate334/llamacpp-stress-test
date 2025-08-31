@@ -359,23 +359,20 @@
                         
                         <div class="output-section">
                             <h2 class="section-title">📊 Test Output Results</h2>
-                            <div style="margin-bottom: 10px;">
-                                <button id="debugOutputBtn" style="padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Debug Output Loading</button>
-                                <button id="testTableBtn" style="padding: 5px 10px; background: #e67e22; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 5px;">Test Table with Sample Data</button>
-                                <span id="debugInfo" style="margin-left: 10px; color: #6c757d; font-size: 0.9em;"></span>
-                            </div>
                             <div style="overflow-x: auto;">
                                 <table id="outputTable" class="output-table">
                                     <thead>
                                         <tr>
-                                            <th>Parallel Level</th>
-                                            <th>KV Cache</th>
-                                            <th>PP Time (s)</th>
-                                            <th>PP Speed (tok/s)</th>
-                                            <th>TG Time (s)</th>
-                                            <th>TG Speed (tok/s)</th>
-                                            <th>Total Time (s)</th>
-                                            <th>Overall Speed (tok/s)</th>
+                                            <th style="text-align: right;">PP</th>
+                                            <th style="text-align: right;">TG</th>
+                                            <th style="text-align: right;">B</th>
+                                            <th style="text-align: right;">N_KV</th>
+                                            <th style="text-align: right;">T_PP s</th>
+                                            <th style="text-align: right;">S_PP t/s</th>
+                                            <th style="text-align: right;">T_TG s</th>
+                                            <th style="text-align: right;">S_TG t/s</th>
+                                            <th style="text-align: right;">T s</th>
+                                            <th style="text-align: right;">S t/s</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -611,7 +608,6 @@
                 }
                 
                 const data = await response.json();
-                console.log('Environment data loaded:', Object.keys(data));
                 return data;
             }
 
@@ -625,10 +621,6 @@
                     throw new Error(`Failed to load output.jsonl: ${response.status}`);
                 }
                 
-                // Log response details for debugging
-                console.log('Response content-type:', response.headers.get('content-type'));
-                console.log('Response size:', response.headers.get('content-length'));
-                
                 let text;
                 try {
                     // Force reading as text regardless of content-type
@@ -636,21 +628,16 @@
                     const decoder = new TextDecoder('utf-8');
                     text = decoder.decode(arrayBuffer);
                     
-                    console.log('Decoded text length:', text.length);
-                    console.log('First 200 chars:', text.substring(0, 200));
-                    
                     if (text.length === 0) {
                         throw new Error('Empty response received');
                     }
                     
                 } catch (e) {
-                    console.error('Error reading response:', e);
                     throw new Error('Failed to read response content');
                 }
                 
                 // Parse JSONL (JSON Lines) format
                 const lines = text.trim().split('\n').filter(line => line.trim().length > 0);
-                console.log('Number of lines to parse:', lines.length);
                 
                 const parsedData = [];
                 lines.forEach((line, index) => {
@@ -658,15 +645,9 @@
                         const parsed = JSON.parse(line.trim());
                         parsedData.push(parsed);
                     } catch (e) {
-                        console.warn(`Failed to parse line ${index + 1}:`, line.substring(0, 100));
-                        console.warn('Parse error:', e.message);
+                        // Skip invalid lines silently
                     }
                 });
-                
-                console.log('Successfully parsed', parsedData.length, 'records');
-                if (parsedData.length > 0) {
-                    console.log('Sample record:', parsedData[0]);
-                }
                 
                 return parsedData;
             }
@@ -723,7 +704,7 @@
                 if (!outputData || outputData.length === 0) {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td colspan="8" style="text-align: center; color: #6c757d; padding: 20px;">
+                        <td colspan="10" style="text-align: center; color: #6c757d; padding: 20px;">
                             No output data available
                         </td>
                     `;
@@ -731,85 +712,35 @@
                     return;
                 }
 
-                console.log('Displaying', outputData.length, 'output records');
-                
-                // Enhanced debugging - log all available fields
-                if (outputData.length > 0) {
-                    console.group('JSONL Data Structure Analysis');
-                    console.log('Sample record (full object):', outputData[0]);
-                    console.log('Available fields:', Object.keys(outputData[0]));
-                    console.groupEnd();
-                }
-
-                outputData.forEach((item, index) => {
-                    try {
-                        const row = document.createElement('tr');
-                        
-                        // Enhanced field detection with comprehensive logging for first record
-                        if (index === 0) {
-                            console.group('Field Mapping Debug');
-                            console.log('Original item:', item);
-                            console.log('Available keys:', Object.keys(item));
-                            
-                            // Check all possible timestamp fields
-                            const timestampFields = ['timestamp', 't_load', 't_p', 't_e', 'created_at', 'time', 'start_time'];
-                            timestampFields.forEach(field => {
-                                if (item[field] !== undefined) {
-                                    console.log(`Found timestamp field '${field}':`, item[field]);
-                                }
-                            });
-                            
-                            // Check all possible token fields
-                            const tokenFields = ['tokens_in', 'tokens_out', 'prompt_tokens', 'completion_tokens', 'input_tokens', 'output_tokens', 'n_p_eval', 'n_eval'];
-                            tokenFields.forEach(field => {
-                                if (item[field] !== undefined) {
-                                    console.log(`Found token field '${field}':`, item[field]);
-                                }
-                            });
-                            
-                            console.groupEnd();
-                        }
-                        
-                        // Extract benchmark data fields directly from the JSONL
-                        const parallelLevel = item.pl !== undefined ? item.pl : 'N/A';
-                        const kvCache = item.n_kv !== undefined ? item.n_kv : 'N/A';
-                        const ppTime = item.t_pp !== undefined ? parseFloat(item.t_pp).toFixed(3) : 'N/A';
-                        const ppSpeed = item.speed_pp !== undefined ? parseFloat(item.speed_pp).toFixed(2) : 'N/A';
-                        const tgTime = item.t_tg !== undefined ? parseFloat(item.t_tg).toFixed(3) : 'N/A';
-                        const tgSpeed = item.speed_tg !== undefined ? parseFloat(item.speed_tg).toFixed(2) : 'N/A';
-                        const totalTime = item.t !== undefined ? parseFloat(item.t).toFixed(3) : 'N/A';
-                        const overallSpeed = item.speed !== undefined ? parseFloat(item.speed).toFixed(2) : 'N/A';
-                        
-                        // Log parsing results for first few records
-                        if (index < 3) {
-                            console.log(`Record ${index} parsed values:`, {
-                                parallelLevel, kvCache, ppTime, ppSpeed, tgTime, tgSpeed, totalTime, overallSpeed
-                            });
-                        }
-                        
-                        row.innerHTML = `
-                            <td class="metric-cell">${parallelLevel}</td>
-                            <td class="metric-cell">${kvCache}</td>
-                            <td class="metric-cell">${ppTime}</td>
-                            <td class="metric-cell">${ppSpeed}</td>
-                            <td class="metric-cell">${tgTime}</td>
-                            <td class="metric-cell">${tgSpeed}</td>
-                            <td class="metric-cell">${totalTime}</td>
-                            <td class="metric-cell">${overallSpeed}</td>
-                        `;
-                        
-                        tbody.appendChild(row);
-                    } catch (e) {
-                        console.error(`Error processing record ${index}:`, e, item);
-                        // Add a row showing the error for debugging
-                        const errorRow = document.createElement('tr');
-                        errorRow.innerHTML = `
-                            <td colspan="8" style="color: #e74c3c; text-align: center;">
-                                Error processing record ${index}: ${e.message}
-                            </td>
-                        `;
-                        tbody.appendChild(errorRow);
-                    }
+                outputData.forEach((item) => {
+                    const row = document.createElement('tr');
+                    
+                    // Extract fields from JSONL data according to the example format
+                    const pp = item.pp !== undefined ? item.pp : 'N/A';
+                    const tg = item.tg !== undefined ? item.tg : 'N/A';
+                    const b = item.pl !== undefined ? item.pl : 'N/A'; // pl = parallel level = batches
+                    const nKv = item.n_kv !== undefined ? item.n_kv : 'N/A';
+                    const tPp = item.t_pp !== undefined ? parseFloat(item.t_pp).toFixed(3) : 'N/A';
+                    const sPp = item.speed_pp !== undefined ? parseFloat(item.speed_pp).toFixed(2) : 'N/A';
+                    const tTg = item.t_tg !== undefined ? parseFloat(item.t_tg).toFixed(3) : 'N/A';
+                    const sTg = item.speed_tg !== undefined ? parseFloat(item.speed_tg).toFixed(2) : 'N/A';
+                    const t = item.t !== undefined ? parseFloat(item.t).toFixed(3) : 'N/A';
+                    const s = item.speed !== undefined ? parseFloat(item.speed).toFixed(2) : 'N/A';
+                    
+                    row.innerHTML = `
+                        <td class="metric-cell">${pp}</td>
+                        <td class="metric-cell">${tg}</td>
+                        <td class="metric-cell">${b}</td>
+                        <td class="metric-cell">${nKv}</td>
+                        <td class="metric-cell">${tPp}</td>
+                        <td class="metric-cell">${sPp}</td>
+                        <td class="metric-cell">${tTg}</td>
+                        <td class="metric-cell">${sTg}</td>
+                        <td class="metric-cell">${t}</td>
+                        <td class="metric-cell">${s}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
                 });
             }
 
@@ -835,189 +766,7 @@
             }
 
             bindEvents() {
-                // Add debug button handler
-                document.addEventListener('click', (e) => {
-                    if (e.target.id === 'debugOutputBtn') {
-                        this.debugOutputLoading();
-                    } else if (e.target.id === 'testTableBtn') {
-                        this.testTableWithSampleData();
-                    }
-                });
-            }
-            
-            testTableWithSampleData() {
-                console.log('🧪 Testing table with sample data');
-                const sampleData = [
-                    {
-                        n_kv_max: 5120,
-                        n_batch: 2048,
-                        n_ubatch: 512,
-                        flash_attn: 1,
-                        is_pp_shared: 0,
-                        n_gpu_layers: 99,
-                        n_threads: 4,
-                        n_threads_batch: 4,
-                        pp: 256,
-                        tg: 128,
-                        pl: 1,
-                        n_kv: 384,
-                        t_pp: 0.202264,
-                        speed_pp: 1265.672607,
-                        t_tg: 4.826603,
-                        speed_tg: 26.519688,
-                        t: 5.028867,
-                        speed: 76.359154
-                    },
-                    {
-                        n_kv_max: 5120,
-                        n_batch: 2048,
-                        n_ubatch: 512,
-                        flash_attn: 1,
-                        is_pp_shared: 0,
-                        n_gpu_layers: 99,
-                        n_threads: 4,
-                        n_threads_batch: 4,
-                        pp: 256,
-                        tg: 128,
-                        pl: 2,
-                        n_kv: 768,
-                        t_pp: 0.383433,
-                        speed_pp: 1335.304932,
-                        t_tg: 5.105231,
-                        speed_tg: 50.144650,
-                        t: 5.488664,
-                        speed: 139.924774
-                    },
-                    {
-                        n_kv_max: 5120,
-                        n_batch: 2048,
-                        n_ubatch: 512,
-                        flash_attn: 1,
-                        is_pp_shared: 0,
-                        n_gpu_layers: 99,
-                        n_threads: 4,
-                        n_threads_batch: 4,
-                        pp: 256,
-                        tg: 128,
-                        pl: 3,
-                        n_kv: 1152,
-                        t_pp: 0.588136,
-                        speed_pp: 1305.820435,
-                        t_tg: 6.690758,
-                        speed_tg: 57.392597,
-                        t: 7.278894,
-                        speed: 158.265793
-                    }
-                ];
-                
-                console.log('Sample benchmark data structure:', sampleData);
-                this.displayOutputData(sampleData);
-                
-                const debugInfo = document.getElementById('debugInfo');
-                debugInfo.textContent = 'Table tested with sample data - check console for details';
-            }
-            
-            async debugOutputLoading() {
-                if (!this.currentResult) {
-                    alert('Please select a test result first');
-                    return;
-                }
-                
-                const debugInfo = document.getElementById('debugInfo');
-                debugInfo.textContent = 'Debugging...';
-                
-                try {
-                    const response = await fetch(`/${this.currentResult}/output.jsonl`);
-                    const contentType = response.headers.get('content-type');
-                    const contentLength = response.headers.get('content-length');
-                    
-                    console.group('🔍 Comprehensive Debug Output Loading');
-                    console.log('URL:', `/${this.currentResult}/output.jsonl`);
-                    console.log('Status:', response.status);
-                    console.log('Content-Type:', contentType);
-                    console.log('Content-Length:', contentLength);
-                    
-                    // Force reading as arrayBuffer for proper encoding
-                    const arrayBuffer = await response.arrayBuffer();
-                    const decoder = new TextDecoder('utf-8');
-                    const text = decoder.decode(arrayBuffer);
-                    
-                    console.log('Response length:', text.length);
-                    console.log('First 500 chars:', text.substring(0, 500));
-                    console.log('Last 200 chars:', text.substring(Math.max(0, text.length - 200)));
-                    
-                    // Parse and analyze JSONL structure
-                    const lines = text.trim().split('\n').filter(line => line.trim().length > 0);
-                    console.log('Number of lines:', lines.length);
-                    
-                    if (lines.length > 0) {
-                        try {
-                            const firstRecord = JSON.parse(lines[0].trim());
-                            console.log('📋 First Record Analysis:');
-                            console.log('Full object:', firstRecord);
-                            console.log('Available fields:', Object.keys(firstRecord));
-                            console.log('Field types:', Object.fromEntries(
-                                Object.entries(firstRecord).map(([k, v]) => [k, typeof v])
-                            ));
-                            
-                            // Analyze potential field mappings
-                            console.log('🔄 Field Mapping Analysis:');
-                            
-                            // Check for timestamp fields
-                            const timeFields = Object.keys(firstRecord).filter(k => 
-                                k.includes('time') || k.includes('stamp') || k === 't_p' || k === 't_e' || k === 't_load'
-                            );
-                            console.log('Potential timestamp fields:', timeFields);
-                            
-                            // Check for token fields
-                            const tokenFields = Object.keys(firstRecord).filter(k => 
-                                k.includes('token') || k.includes('n_eval') || k.includes('n_p_eval')
-                            );
-                            console.log('Potential token fields:', tokenFields);
-                            
-                            // Check for text fields
-                            const textFields = Object.keys(firstRecord).filter(k => 
-                                k.includes('prompt') || k.includes('input') || k.includes('output') || 
-                                k.includes('response') || k.includes('completion')
-                            );
-                            console.log('Potential text fields:', textFields);
-                            
-                            // Show sample values for key fields
-                            console.log('📊 Sample Values:');
-                            Object.entries(firstRecord).forEach(([key, value]) => {
-                                if (typeof value !== 'object' || value === null) {
-                                    const preview = String(value).length > 100 ? 
-                                        String(value).substring(0, 100) + '...' : String(value);
-                                    console.log(`  ${key}: ${preview}`);
-                                }
-                            });
-                            
-                        } catch (parseError) {
-                            console.error('Failed to parse first record:', parseError);
-                            console.log('First line raw:', lines[0]);
-                        }
-                    }
-                    
-                    // Try to identify the issue
-                    const issues = [];
-                    if (text.length === 0) issues.push('Empty response');
-                    if (!text.includes('{')) issues.push('No JSON objects found');
-                    if (text.includes('<!DOCTYPE') || text.includes('<html')) issues.push('HTML response instead of JSONL');
-                    if (/^[A-Za-z0-9+/=]+$/.test(text.replace(/\s/g, ''))) issues.push('Appears to be base64 encoded');
-                    
-                    console.log('🚨 Detected issues:', issues.length ? issues : ['None detected']);
-                    console.groupEnd();
-                    
-                    debugInfo.textContent = `Status: ${response.status}, Type: ${contentType}, Lines: ${lines.length}, Issues: ${issues.join(', ') || 'None'}`;
-                    
-                    if (issues.length === 0 && lines.length > 0) {
-                        debugInfo.textContent += ' - Data loaded successfully! Check console for detailed analysis.';
-                    }
-                    
-                } catch (error) {
-                    console.error('Debug error:', error);
-                    debugInfo.textContent = `Error: ${error.message}`;
-                }
+                // Event handlers for dashboard interactions
             }
         }
 
