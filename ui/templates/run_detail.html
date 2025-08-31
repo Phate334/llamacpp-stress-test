@@ -1,56 +1,95 @@
 <!doctype html>
 <html lang="zh-Hant-TW">
+
 <head>
-  <meta charset="utf-8" />
-  <title>{{ project_name }} - {{ run_id }}</title>
-  <link rel="stylesheet" href="/static/charts.min.css" />
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 1.5rem; }
-    h1 { font-size: 1.3rem; }
-    pre { background:#222; color:#eee; padding:1rem; overflow:auto; }
-    table { border-collapse: collapse; width: 100%; font-size: .85rem; }
-    th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
-    th { background: #f0f0f0; position: sticky; top:0; }
-    .nowrap { white-space: nowrap; }
-    details { margin: .5rem 0; }
-  </style>
+    <meta charset="utf-8" />
+    <title>{{ project_name }} - {{ run_id }}</title>
+    <link rel="stylesheet" href="/static/bulma.min.css" />
+    <link rel="stylesheet" href="/static/charts.min.css" />
+    <style>
+        pre.json-block {
+            background: #1e1e1e;
+            color: #eee;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: .8rem;
+        }
+
+        .run-id-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        }
+
+        .table-wrapper {
+            max-height: 70vh;
+            overflow: auto;
+        }
+
+        table.table td,
+        table.table th {
+            font-size: .75rem;
+        }
+    </style>
 </head>
+
 <body>
-  <p><a href="/">← 回列表</a></p>
-  <h1>執行結果：{{ run_id }}</h1>
-  <section>
-    <h2>environment.json</h2>
-    <pre id="env-json"></pre>
-  </section>
-  <section>
-    <h2>output.jsonl (全部資料)</h2>
-    <div id="output-table">載入中...</div>
-  </section>
-  <script>
-    async function loadEnv() {
-      const r = await fetch(`/api/runs/{{ run_id }}/environment`);
-      const data = await r.json();
-      document.getElementById('env-json').textContent = JSON.stringify(data, null, 2);
-    }
-    function inferColumns(rows) {
-      const keys = new Set();
-      rows.forEach(o => Object.keys(o).forEach(k => keys.add(k)));
-      return Array.from(keys);
-    }
-    function escapeHtml(s){return s==null?"":String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
-    async function loadOutput() {
-      const r = await fetch(`/api/runs/{{ run_id }}/output`);
-      const data = await r.json();
-      const rows = data.rows || [];
-      if(!rows.length){ document.getElementById('output-table').textContent='無資料'; return; }
-      const cols = inferColumns(rows);
-      let html = '<table><thead><tr>'; cols.forEach(c=> html+=`<th>${escapeHtml(c)}</th>`); html+='</tr></thead><tbody>';
-      rows.forEach(o=>{ html+='<tr>'; cols.forEach(c=>{ const v=o[c]; html+=`<td>${escapeHtml(v)}</td>`}); html+='</tr>'; });
-      html+='</tbody></table>';
-      document.getElementById('output-table').innerHTML = html;
-    }
-    loadEnv();
-    loadOutput();
-  </script>
+    <nav class="navbar is-light" role="navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item has-text-weight-semibold" href="/">{{ project_name }}</a>
+        </div>
+    </nav>
+    <section class="section py-4">
+        <div class="container">
+            <h1 class="title is-4">執行結果 <span class="run-id-mono has-text-grey-dark">{{ run_id }}</span></h1>
+            <div class="columns is-variable is-5">
+                <div class="column is-one-third">
+                    <div class="card">
+                        <header class="card-header">
+                            <p class="card-header-title">environment.json</p>
+                        </header>
+                        <div class="card-content">
+                            <pre id="env-json" class="json-block">載入中...</pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="card">
+                        <header class="card-header">
+                            <p class="card-header-title">output.jsonl (全部資料)</p>
+                        </header>
+                        <div class="card-content">
+                            <div id="output-table" class="table-wrapper">載入中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        async function loadEnv() {
+            const r = await fetch(`/api/runs/{{ run_id }}/environment`);
+            const data = await r.json();
+            document.getElementById('env-json').textContent = JSON.stringify(data, null, 2);
+        }
+        function inferColumns(rows) {
+            const keys = new Set();
+            rows.forEach(o => Object.keys(o).forEach(k => keys.add(k)));
+            return Array.from(keys);
+        }
+        function escapeHtml(s) { return s == null ? "" : String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c])); }
+        async function loadOutput() {
+            const r = await fetch(`/api/runs/{{ run_id }}/output`);
+            const data = await r.json();
+            const rows = data.rows || [];
+            if (!rows.length) { document.getElementById('output-table').innerHTML = '<div class="notification is-warning is-light">無資料</div>'; return; }
+            const cols = inferColumns(rows);
+            let html = '<table class="table is-fullwidth is-hoverable is-striped is-narrow"><thead><tr>'; cols.forEach(c => html += `<th>${escapeHtml(c)}</th>`); html += '</tr></thead><tbody>';
+            rows.forEach(o => { html += '<tr>'; cols.forEach(c => { const v = o[c]; html += `<td>${escapeHtml(v)}</td>` }); html += '</tr>'; });
+            html += '</tbody></table>';
+            document.getElementById('output-table').innerHTML = html;
+        }
+        loadEnv();
+        loadOutput();
+    </script>
 </body>
+
 </html>

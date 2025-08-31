@@ -4,55 +4,60 @@
 <head>
     <meta charset="utf-8" />
     <title>{{ project_name }} - 執行結果列表</title>
+    <link rel="stylesheet" href="/static/bulma.min.css" />
     <link rel="stylesheet" href="/static/charts.min.css" />
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            margin: 1.5rem;
+        .run-id-mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         }
 
-        h1 {
-            font-size: 1.4rem;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        li {
-            margin: .3rem 0;
-        }
-
-        code {
-            background: #f5f5f5;
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-
-        .empty {
-            color: #777;
+        footer {
+            margin-top: 2rem;
         }
     </style>
 </head>
 
 <body>
-    <h1>{{ project_name }} - 執行結果</h1>
-    {% if runs %}
-    <ul>
-        {% for r in runs %}
-        <li><a href="/runs/{{ r }}">{{ r }}</a></li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="empty">尚無結果資料。</p>
-    {% endif %}
-    <hr />
-    <p><small>共 {{ runs|length }} 筆</small></p>
-    <script>
-        // 簡單自動重新整理 (60 秒)
-        setTimeout(() => location.reload(), 60000);
-    </script>
+    <nav class="navbar is-light" role="navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item has-text-weight-semibold" href="/">{{ project_name }}</a>
+        </div>
+    </nav>
+    <section class="section py-4">
+        <div class="container">
+            <h1 class="title is-4 mb-4">執行結果列表</h1>
+            {% if runs %}
+            <div class="table-container">
+                <table class="table is-striped is-hoverable is-fullwidth is-narrow">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Run ID</th>
+                            <th>檔案</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in runs %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td class="run-id-mono"><a href="/runs/{{ r }}">{{ r }}</a></td>
+                            <td><a class="button is-small is-link is-light" href="/runs/{{ r }}">檢視</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="notification is-warning is-light">尚無結果資料。</div>
+            {% endif %}
+            <p class="has-text-grey is-size-7 mt-2">共 {{ runs|length }} 筆</p>
+        </div>
+    </section>
+    <footer class="footer py-4">
+        <div class="content has-text-centered is-size-7 has-text-grey">
+            {{ project_name }}
+        </div>
+    </footer>
 </body>
 
 </html>
