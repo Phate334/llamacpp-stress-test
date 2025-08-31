@@ -677,15 +677,30 @@
                     // Format timestamp
                     const timestamp = new Date(item.timestamp).toLocaleString();
                     
+                    // Map different possible field names from the JSONL format
+                    const tokensIn = item.tokens_in || item.prompt_tokens || 0;
+                    const tokensOut = item.tokens_out || item.completion_tokens || 0;
+                    const latencyMs = item.latency_ms || item.total_time_ms || 0;
+                    
+                    // Calculate throughput if not provided
+                    let throughput = item.throughput_tokens_per_sec;
+                    if (!throughput && tokensOut > 0 && latencyMs > 0) {
+                        throughput = (tokensOut / (latencyMs / 1000)).toFixed(2);
+                    } else if (throughput) {
+                        throughput = throughput.toFixed(2);
+                    } else {
+                        throughput = '0.00';
+                    }
+                    
                     row.innerHTML = `
                         <td>${timestamp}</td>
                         <td>${item.user_id || 'N/A'}</td>
                         <td class="prompt-cell" title="${item.prompt || ''}">${item.prompt || 'N/A'}</td>
                         <td class="response-cell" title="${item.response || ''}">${item.response || 'N/A'}</td>
-                        <td class="metric-cell">${item.tokens_in || 0}</td>
-                        <td class="metric-cell">${item.tokens_out || 0}</td>
-                        <td class="metric-cell">${item.latency_ms || 0}</td>
-                        <td class="metric-cell">${item.throughput_tokens_per_sec?.toFixed(2) || '0.00'}</td>
+                        <td class="metric-cell">${tokensIn}</td>
+                        <td class="metric-cell">${tokensOut}</td>
+                        <td class="metric-cell">${latencyMs}</td>
+                        <td class="metric-cell">${throughput}</td>
                     `;
                     
                     tbody.appendChild(row);
