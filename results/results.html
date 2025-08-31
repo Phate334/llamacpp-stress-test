@@ -359,6 +359,10 @@
                         
                         <div class="output-section">
                             <h2 class="section-title">📊 Test Output Results</h2>
+                            <div style="margin-bottom: 10px;">
+                                <button id="debugOutputBtn" style="padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Debug Output Loading</button>
+                                <span id="debugInfo" style="margin-left: 10px; color: #6c757d; font-size: 0.9em;"></span>
+                            </div>
                             <div style="overflow-x: auto;">
                                 <table id="outputTable" class="output-table">
                                     <thead>
@@ -596,30 +600,74 @@
             }
 
             async loadEnvironmentData(resultDir) {
-                const response = await fetch(`/${resultDir}/environment.json`);
+                const response = await fetch(`/${resultDir}/environment.json`, {
+                    headers: {
+                        'Accept': 'application/json, text/plain, */*'
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`Failed to load environment.json: ${response.status}`);
                 }
-                return await response.json();
+                
+                const data = await response.json();
+                console.log('Environment data loaded:', Object.keys(data));
+                return data;
             }
 
             async loadOutputData(resultDir) {
-                const response = await fetch(`/${resultDir}/output.jsonl`);
+                const response = await fetch(`/${resultDir}/output.jsonl`, {
+                    headers: {
+                        'Accept': 'text/plain, application/json, */*'
+                    }
+                });
                 if (!response.ok) {
                     throw new Error(`Failed to load output.jsonl: ${response.status}`);
                 }
-                const text = await response.text();
+                
+                // Log response details for debugging
+                console.log('Response content-type:', response.headers.get('content-type'));
+                console.log('Response size:', response.headers.get('content-length'));
+                
+                let text;
+                try {
+                    // Force reading as text regardless of content-type
+                    const arrayBuffer = await response.arrayBuffer();
+                    const decoder = new TextDecoder('utf-8');
+                    text = decoder.decode(arrayBuffer);
+                    
+                    console.log('Decoded text length:', text.length);
+                    console.log('First 200 chars:', text.substring(0, 200));
+                    
+                    if (text.length === 0) {
+                        throw new Error('Empty response received');
+                    }
+                    
+                } catch (e) {
+                    console.error('Error reading response:', e);
+                    throw new Error('Failed to read response content');
+                }
                 
                 // Parse JSONL (JSON Lines) format
-                const lines = text.trim().split('\n');
-                return lines.map(line => {
+                const lines = text.trim().split('\n').filter(line => line.trim().length > 0);
+                console.log('Number of lines to parse:', lines.length);
+                
+                const parsedData = [];
+                lines.forEach((line, index) => {
                     try {
-                        return JSON.parse(line);
+                        const parsed = JSON.parse(line.trim());
+                        parsedData.push(parsed);
                     } catch (e) {
-                        console.warn('Failed to parse line:', line);
-                        return null;
+                        console.warn(`Failed to parse line ${index + 1}:`, line.substring(0, 100));
+                        console.warn('Parse error:', e.message);
                     }
-                }).filter(item => item !== null);
+                });
+                
+                console.log('Successfully parsed', parsedData.length, 'records');
+                if (parsedData.length > 0) {
+                    console.log('Sample record:', parsedData[0]);
+                }
+                
+                return parsedData;
             }
 
             displayEnvironmentData(envData) {
@@ -671,39 +719,87 @@
                 const tbody = document.querySelector('#outputTable tbody');
                 tbody.innerHTML = '';
 
-                outputData.forEach(item => {
+                if (!outputData || outputData.length === 0) {
                     const row = document.createElement('tr');
-                    
-                    // Format timestamp
-                    const timestamp = new Date(item.timestamp).toLocaleString();
-                    
-                    // Map different possible field names from the JSONL format
-                    const tokensIn = item.tokens_in || item.prompt_tokens || 0;
-                    const tokensOut = item.tokens_out || item.completion_tokens || 0;
-                    const latencyMs = item.latency_ms || item.total_time_ms || 0;
-                    
-                    // Calculate throughput if not provided
-                    let throughput = item.throughput_tokens_per_sec;
-                    if (!throughput && tokensOut > 0 && latencyMs > 0) {
-                        throughput = (tokensOut / (latencyMs / 1000)).toFixed(2);
-                    } else if (throughput) {
-                        throughput = throughput.toFixed(2);
-                    } else {
-                        throughput = '0.00';
-                    }
-                    
                     row.innerHTML = `
-                        <td>${timestamp}</td>
-                        <td>${item.user_id || 'N/A'}</td>
-                        <td class="prompt-cell" title="${item.prompt || ''}">${item.prompt || 'N/A'}</td>
-                        <td class="response-cell" title="${item.response || ''}">${item.response || 'N/A'}</td>
-                        <td class="metric-cell">${tokensIn}</td>
-                        <td class="metric-cell">${tokensOut}</td>
-                        <td class="metric-cell">${latencyMs}</td>
-                        <td class="metric-cell">${throughput}</td>
+                        <td colspan="8" style="text-align: center; color: #6c757d; padding: 20px;">
+                            No output data available
+                        </td>
                     `;
-                    
                     tbody.appendChild(row);
+                    return;
+                }
+
+                console.log('Displaying', outputData.length, 'output records');
+
+                outputData.forEach((item, index) => {
+                    try {
+                        const row = document.createElement('tr');
+                        
+                        // Format timestamp with better validation
+                        let timestamp = 'Invalid Date';
+                        if (item.timestamp) {
+                            try {
+                                const date = new Date(item.timestamp);
+                                if (!isNaN(date.getTime())) {
+                                    timestamp = date.toLocaleString();
+                                } else {
+                                    // Try parsing as Unix timestamp if it's a number
+                                    const unixTimestamp = parseFloat(item.timestamp);
+                                    if (!isNaN(unixTimestamp)) {
+                                        timestamp = new Date(unixTimestamp * 1000).toLocaleString();
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn(`Failed to parse timestamp for record ${index}:`, item.timestamp);
+                            }
+                        }
+                        
+                        // Map different possible field names from the JSONL format with logging
+                        const tokensIn = item.tokens_in || item.prompt_tokens || item.input_tokens || 0;
+                        const tokensOut = item.tokens_out || item.completion_tokens || item.output_tokens || 0;
+                        const latencyMs = item.latency_ms || item.total_time_ms || item.duration_ms || 0;
+                        
+                        // Get user ID with fallbacks
+                        const userId = item.user_id || item.id || item.request_id || 'N/A';
+                        
+                        // Get prompt and response with fallbacks
+                        const prompt = item.prompt || item.input || item.request || 'N/A';
+                        const response = item.response || item.output || item.completion || 'N/A';
+                        
+                        // Calculate throughput if not provided
+                        let throughput = item.throughput_tokens_per_sec || item.throughput || item.tokens_per_second;
+                        if (!throughput && tokensOut > 0 && latencyMs > 0) {
+                            throughput = (tokensOut / (latencyMs / 1000)).toFixed(2);
+                        } else if (throughput) {
+                            throughput = parseFloat(throughput).toFixed(2);
+                        } else {
+                            throughput = '0.00';
+                        }
+                        
+                        // Log first few records for debugging
+                        if (index < 3) {
+                            console.log(`Record ${index}:`, {
+                                original: item,
+                                parsed: { timestamp, userId, prompt: prompt.substring(0, 50), response: response.substring(0, 50), tokensIn, tokensOut, latencyMs, throughput }
+                            });
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${timestamp}</td>
+                            <td>${userId}</td>
+                            <td class="prompt-cell" title="${prompt}">${prompt}</td>
+                            <td class="response-cell" title="${response}">${response}</td>
+                            <td class="metric-cell">${tokensIn}</td>
+                            <td class="metric-cell">${tokensOut}</td>
+                            <td class="metric-cell">${latencyMs}</td>
+                            <td class="metric-cell">${throughput}</td>
+                        `;
+                        
+                        tbody.appendChild(row);
+                    } catch (e) {
+                        console.error(`Error processing record ${index}:`, e, item);
+                    }
                 });
             }
 
@@ -729,8 +825,59 @@
             }
 
             bindEvents() {
-                // Add any additional event handlers here if needed
-                // Note: iframe error handling removed since we're no longer using iframe
+                // Add debug button handler
+                document.addEventListener('click', (e) => {
+                    if (e.target.id === 'debugOutputBtn') {
+                        this.debugOutputLoading();
+                    }
+                });
+            }
+            
+            async debugOutputLoading() {
+                if (!this.currentResult) {
+                    alert('Please select a test result first');
+                    return;
+                }
+                
+                const debugInfo = document.getElementById('debugInfo');
+                debugInfo.textContent = 'Debugging...';
+                
+                try {
+                    const response = await fetch(`/${this.currentResult}/output.jsonl`);
+                    const contentType = response.headers.get('content-type');
+                    const contentLength = response.headers.get('content-length');
+                    
+                    console.group('Debug Output Loading');
+                    console.log('URL:', `/${this.currentResult}/output.jsonl`);
+                    console.log('Status:', response.status);
+                    console.log('Content-Type:', contentType);
+                    console.log('Content-Length:', contentLength);
+                    
+                    const text = await response.text();
+                    console.log('Response length:', text.length);
+                    console.log('First 500 chars:', text.substring(0, 500));
+                    console.log('Last 200 chars:', text.substring(Math.max(0, text.length - 200)));
+                    
+                    // Try to identify the issue
+                    const issues = [];
+                    if (text.length === 0) issues.push('Empty response');
+                    if (!text.includes('{')) issues.push('No JSON objects found');
+                    if (text.includes('<!DOCTYPE') || text.includes('<html')) issues.push('HTML response instead of JSONL');
+                    if (/^[A-Za-z0-9+/=]+$/.test(text.replace(/\s/g, ''))) issues.push('Appears to be base64 encoded');
+                    
+                    console.log('Detected issues:', issues);
+                    console.groupEnd();
+                    
+                    debugInfo.textContent = `Status: ${response.status}, Type: ${contentType}, Length: ${text.length}, Issues: ${issues.join(', ') || 'None detected'}`;
+                    
+                    if (issues.length === 0) {
+                        debugInfo.textContent += ' - Looks good! Check console for details.';
+                    }
+                    
+                } catch (error) {
+                    console.error('Debug error:', error);
+                    debugInfo.textContent = `Error: ${error.message}`;
+                }
             }
         }
 
