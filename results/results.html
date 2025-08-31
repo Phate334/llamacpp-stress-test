@@ -368,14 +368,14 @@
                                 <table id="outputTable" class="output-table">
                                     <thead>
                                         <tr>
-                                            <th>Timestamp</th>
-                                            <th>User ID</th>
-                                            <th>Prompt</th>
-                                            <th>Response</th>
-                                            <th>Tokens In</th>
-                                            <th>Tokens Out</th>
-                                            <th>Latency (ms)</th>
-                                            <th>Throughput (tok/s)</th>
+                                            <th>Parallel Level</th>
+                                            <th>KV Cache</th>
+                                            <th>PP Time (s)</th>
+                                            <th>PP Speed (tok/s)</th>
+                                            <th>TG Time (s)</th>
+                                            <th>TG Speed (tok/s)</th>
+                                            <th>Total Time (s)</th>
+                                            <th>Overall Speed (tok/s)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -770,134 +770,32 @@
                             console.groupEnd();
                         }
                         
-                        // Format timestamp with enhanced detection
-                        let timestamp = 'Invalid Date';
-                        const possibleTimestamps = [
-                            item.timestamp, item.t_load, item.t_p, item.t_e, 
-                            item.created_at, item.time, item.start_time
-                        ];
-                        
-                        for (const ts of possibleTimestamps) {
-                            if (ts !== undefined && ts !== null) {
-                                try {
-                                    let date;
-                                    if (typeof ts === 'number') {
-                                        // Try as milliseconds first, then seconds
-                                        date = new Date(ts > 1e10 ? ts : ts * 1000);
-                                    } else {
-                                        date = new Date(ts);
-                                    }
-                                    
-                                    if (!isNaN(date.getTime())) {
-                                        timestamp = date.toLocaleString();
-                                        break;
-                                    }
-                                } catch (e) {
-                                    continue;
-                                }
-                            }
-                        }
-                        
-                        // If still no valid timestamp, use current time or record index
-                        if (timestamp === 'Invalid Date') {
-                            timestamp = `Record ${index + 1}`;
-                        }
-                        
-                        // Enhanced field mapping with more comprehensive detection
-                        let tokensIn = 0;
-                        let tokensOut = 0;
-                        let latencyMs = 0;
-                        
-                        // Token input mapping
-                        const tokenInFields = ['tokens_in', 'prompt_tokens', 'input_tokens', 'n_p_eval'];
-                        for (const field of tokenInFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                tokensIn = parseInt(item[field]) || 0;
-                                break;
-                            }
-                        }
-                        
-                        // Token output mapping
-                        const tokenOutFields = ['tokens_out', 'completion_tokens', 'output_tokens', 'n_eval'];
-                        for (const field of tokenOutFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                tokensOut = parseInt(item[field]) || 0;
-                                break;
-                            }
-                        }
-                        
-                        // Latency mapping
-                        const latencyFields = ['latency_ms', 'total_time_ms', 'duration_ms', 't_p', 't_e'];
-                        for (const field of latencyFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                latencyMs = parseFloat(item[field]) || 0;
-                                break;
-                            }
-                        }
-                        
-                        // Get user ID with more comprehensive fallbacks
-                        const userIdFields = ['user_id', 'id', 'request_id', 'user', 'client_id'];
-                        let userId = 'N/A';
-                        for (const field of userIdFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                userId = String(item[field]);
-                                break;
-                            }
-                        }
-                        
-                        // Get prompt and response with enhanced detection
-                        const promptFields = ['prompt', 'input', 'request', 'message', 'query'];
-                        let prompt = 'N/A';
-                        for (const field of promptFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                prompt = String(item[field]);
-                                break;
-                            }
-                        }
-                        
-                        const responseFields = ['response', 'output', 'completion', 'reply', 'content'];
-                        let response = 'N/A';
-                        for (const field of responseFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                response = String(item[field]);
-                                break;
-                            }
-                        }
-                        
-                        // Calculate throughput with enhanced detection
-                        let throughput = '0.00';
-                        const throughputFields = ['throughput_tokens_per_sec', 'throughput', 'tokens_per_second', 'speed', 'speed_t'];
-                        
-                        for (const field of throughputFields) {
-                            if (item[field] !== undefined && item[field] !== null) {
-                                throughput = parseFloat(item[field]).toFixed(2);
-                                break;
-                            }
-                        }
-                        
-                        // Calculate throughput if not found and we have the required data
-                        if (throughput === '0.00' && tokensOut > 0 && latencyMs > 0) {
-                            throughput = (tokensOut / (latencyMs / 1000)).toFixed(2);
-                        }
+                        // Extract benchmark data fields directly from the JSONL
+                        const parallelLevel = item.pl !== undefined ? item.pl : 'N/A';
+                        const kvCache = item.n_kv !== undefined ? item.n_kv : 'N/A';
+                        const ppTime = item.t_pp !== undefined ? parseFloat(item.t_pp).toFixed(3) : 'N/A';
+                        const ppSpeed = item.speed_pp !== undefined ? parseFloat(item.speed_pp).toFixed(2) : 'N/A';
+                        const tgTime = item.t_tg !== undefined ? parseFloat(item.t_tg).toFixed(3) : 'N/A';
+                        const tgSpeed = item.speed_tg !== undefined ? parseFloat(item.speed_tg).toFixed(2) : 'N/A';
+                        const totalTime = item.t !== undefined ? parseFloat(item.t).toFixed(3) : 'N/A';
+                        const overallSpeed = item.speed !== undefined ? parseFloat(item.speed).toFixed(2) : 'N/A';
                         
                         // Log parsing results for first few records
                         if (index < 3) {
                             console.log(`Record ${index} parsed values:`, {
-                                timestamp, userId, tokensIn, tokensOut, latencyMs, throughput,
-                                promptPreview: prompt.substring(0, 50),
-                                responsePreview: response.substring(0, 50)
+                                parallelLevel, kvCache, ppTime, ppSpeed, tgTime, tgSpeed, totalTime, overallSpeed
                             });
                         }
                         
                         row.innerHTML = `
-                            <td>${timestamp}</td>
-                            <td>${userId}</td>
-                            <td class="prompt-cell" title="${prompt}">${prompt}</td>
-                            <td class="response-cell" title="${response}">${response}</td>
-                            <td class="metric-cell">${tokensIn}</td>
-                            <td class="metric-cell">${tokensOut}</td>
-                            <td class="metric-cell">${latencyMs}</td>
-                            <td class="metric-cell">${throughput}</td>
+                            <td class="metric-cell">${parallelLevel}</td>
+                            <td class="metric-cell">${kvCache}</td>
+                            <td class="metric-cell">${ppTime}</td>
+                            <td class="metric-cell">${ppSpeed}</td>
+                            <td class="metric-cell">${tgTime}</td>
+                            <td class="metric-cell">${tgSpeed}</td>
+                            <td class="metric-cell">${totalTime}</td>
+                            <td class="metric-cell">${overallSpeed}</td>
                         `;
                         
                         tbody.appendChild(row);
@@ -951,33 +849,68 @@
                 console.log('🧪 Testing table with sample data');
                 const sampleData = [
                     {
-                        timestamp: new Date().toISOString(),
-                        user_id: 'user_001',
-                        prompt: 'What is the capital of France?',
-                        response: 'The capital of France is Paris.',
-                        prompt_tokens: 8,
-                        completion_tokens: 7,
-                        total_time_ms: 150,
-                        throughput_tokens_per_sec: 46.67
+                        n_kv_max: 5120,
+                        n_batch: 2048,
+                        n_ubatch: 512,
+                        flash_attn: 1,
+                        is_pp_shared: 0,
+                        n_gpu_layers: 99,
+                        n_threads: 4,
+                        n_threads_batch: 4,
+                        pp: 256,
+                        tg: 128,
+                        pl: 1,
+                        n_kv: 384,
+                        t_pp: 0.202264,
+                        speed_pp: 1265.672607,
+                        t_tg: 4.826603,
+                        speed_tg: 26.519688,
+                        t: 5.028867,
+                        speed: 76.359154
                     },
                     {
-                        t_p: Date.now() / 1000,
-                        id: 'req_002',
-                        input: 'Explain quantum computing',
-                        output: 'Quantum computing uses quantum mechanics principles...',
-                        n_p_eval: 12,
-                        n_eval: 25,
-                        speed_t: 35.2
+                        n_kv_max: 5120,
+                        n_batch: 2048,
+                        n_ubatch: 512,
+                        flash_attn: 1,
+                        is_pp_shared: 0,
+                        n_gpu_layers: 99,
+                        n_threads: 4,
+                        n_threads_batch: 4,
+                        pp: 256,
+                        tg: 128,
+                        pl: 2,
+                        n_kv: 768,
+                        t_pp: 0.383433,
+                        speed_pp: 1335.304932,
+                        t_tg: 5.105231,
+                        speed_tg: 50.144650,
+                        t: 5.488664,
+                        speed: 139.924774
                     },
                     {
-                        // Test with minimal fields to see fallback behavior
-                        timestamp: 1693478400,
-                        prompt: 'Short test',
-                        response: 'OK'
+                        n_kv_max: 5120,
+                        n_batch: 2048,
+                        n_ubatch: 512,
+                        flash_attn: 1,
+                        is_pp_shared: 0,
+                        n_gpu_layers: 99,
+                        n_threads: 4,
+                        n_threads_batch: 4,
+                        pp: 256,
+                        tg: 128,
+                        pl: 3,
+                        n_kv: 1152,
+                        t_pp: 0.588136,
+                        speed_pp: 1305.820435,
+                        t_tg: 6.690758,
+                        speed_tg: 57.392597,
+                        t: 7.278894,
+                        speed: 158.265793
                     }
                 ];
                 
-                console.log('Sample data structure:', sampleData);
+                console.log('Sample benchmark data structure:', sampleData);
                 this.displayOutputData(sampleData);
                 
                 const debugInfo = document.getElementById('debugInfo');
