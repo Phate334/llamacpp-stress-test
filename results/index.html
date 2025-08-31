@@ -109,6 +109,128 @@
             border: none;
         }
 
+        .result-content {
+            display: none;
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .result-content.show {
+            display: block;
+        }
+
+        .environment-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .env-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .env-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .env-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .env-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .env-item:last-child {
+            border-bottom: none;
+        }
+
+        .env-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .env-value {
+            color: #6c757d;
+            text-align: right;
+        }
+
+        .output-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .output-table th {
+            background: #3498db;
+            color: #fff;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .output-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .output-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .output-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .prompt-cell {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .response-cell {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .metric-cell {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .loading-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #6c757d;
+        }
+
         .welcome-screen {
             display: flex;
             flex-direction: column;
@@ -219,6 +341,45 @@
                 <div class="welcome-screen" id="welcomeScreen">
                     <h2>📊 Stress Test Dashboard</h2>
                     <p>Welcome to the LlamaCpp stress test results dashboard. Use the sidebar to browse through different test runs and analyze their performance metrics, environment details, and benchmark results.</p>
+                </div>
+                
+                <div class="result-content" id="resultContent">
+                    <div id="loadingContent" class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <span style="margin-left: 10px;">Loading test results...</span>
+                    </div>
+                    
+                    <div id="actualContent" style="display: none;">
+                        <div class="environment-section">
+                            <h2 class="section-title">🖥️ Test Environment</h2>
+                            <div id="environmentContent" class="env-grid">
+                                <!-- Environment data will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <div class="output-section">
+                            <h2 class="section-title">📊 Test Output Results</h2>
+                            <div style="overflow-x: auto;">
+                                <table id="outputTable" class="output-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>User ID</th>
+                                            <th>Prompt</th>
+                                            <th>Response</th>
+                                            <th>Tokens In</th>
+                                            <th>Tokens Out</th>
+                                            <th>Latency (ms)</th>
+                                            <th>Throughput (tok/s)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Output data will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <iframe class="content-iframe" id="contentIframe" style="display: none;"></iframe>
@@ -357,34 +518,165 @@
                 const contentTitle = document.getElementById('contentTitle');
                 const contentSubtitle = document.getElementById('contentSubtitle');
                 const welcomeScreen = document.getElementById('welcomeScreen');
-                const iframe = document.getElementById('contentIframe');
+                const resultContent = document.getElementById('resultContent');
+                const loadingContent = document.getElementById('loadingContent');
+                const actualContent = document.getElementById('actualContent');
 
                 // Update header
                 const timestamp = this.parseTimestamp(resultDir);
                 contentTitle.textContent = `Test Run: ${timestamp}`;
                 contentSubtitle.textContent = `Viewing results from ${resultDir}`;
 
-                // Hide welcome screen and show iframe
+                // Hide welcome screen and show result content
                 welcomeScreen.style.display = 'none';
-                iframe.style.display = 'block';
-                iframe.src = `/${resultDir}/`;
+                resultContent.classList.add('show');
+                loadingContent.style.display = 'flex';
+                actualContent.style.display = 'none';
+
+                try {
+                    // Load environment.json and output.jsonl in parallel
+                    const [envData, outputData] = await Promise.all([
+                        this.loadEnvironmentData(resultDir),
+                        this.loadOutputData(resultDir)
+                    ]);
+
+                    // Display the data
+                    this.displayEnvironmentData(envData);
+                    this.displayOutputData(outputData);
+
+                    // Show content
+                    loadingContent.style.display = 'none';
+                    actualContent.style.display = 'block';
+
+                } catch (error) {
+                    console.error('Error loading result content:', error);
+                    this.showError('Failed to load test result data. Please check if the files exist and are accessible.');
+                    resultContent.classList.remove('show');
+                    welcomeScreen.style.display = 'flex';
+                }
+            }
+
+            async loadEnvironmentData(resultDir) {
+                const response = await fetch(`/${resultDir}/environment.json`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load environment.json: ${response.status}`);
+                }
+                return await response.json();
+            }
+
+            async loadOutputData(resultDir) {
+                const response = await fetch(`/${resultDir}/output.jsonl`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load output.jsonl: ${response.status}`);
+                }
+                const text = await response.text();
+                
+                // Parse JSONL (JSON Lines) format
+                const lines = text.trim().split('\n');
+                return lines.map(line => {
+                    try {
+                        return JSON.parse(line);
+                    } catch (e) {
+                        console.warn('Failed to parse line:', line);
+                        return null;
+                    }
+                }).filter(item => item !== null);
+            }
+
+            displayEnvironmentData(envData) {
+                const container = document.getElementById('environmentContent');
+                container.innerHTML = '';
+
+                // Group environment data into cards
+                const sections = [
+                    { title: 'GPU Information', key: 'gpu_info', icon: '🎮' },
+                    { title: 'CPU Information', key: 'cpu_info', icon: '⚡' },
+                    { title: 'System Information', key: 'system_info', icon: '💻' },
+                    { title: 'LlamaCpp Configuration', key: 'llamacpp_info', icon: '🦙' },
+                    { title: 'Test Configuration', key: 'test_config', icon: '⚙️' }
+                ];
+
+                sections.forEach(section => {
+                    if (envData[section.key]) {
+                        const card = this.createEnvironmentCard(section.title, envData[section.key], section.icon);
+                        container.appendChild(card);
+                    }
+                });
+            }
+
+            createEnvironmentCard(title, data, icon) {
+                const card = document.createElement('div');
+                card.className = 'env-card';
+                
+                let items = '';
+                for (const [key, value] of Object.entries(data)) {
+                    const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    const displayValue = typeof value === 'object' ? JSON.stringify(value) : value;
+                    items += `
+                        <div class="env-item">
+                            <span class="env-label">${displayKey}:</span>
+                            <span class="env-value">${displayValue}</span>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <h3>${icon} ${title}</h3>
+                    ${items}
+                `;
+
+                return card;
+            }
+
+            displayOutputData(outputData) {
+                const tbody = document.querySelector('#outputTable tbody');
+                tbody.innerHTML = '';
+
+                outputData.forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    // Format timestamp
+                    const timestamp = new Date(item.timestamp).toLocaleString();
+                    
+                    row.innerHTML = `
+                        <td>${timestamp}</td>
+                        <td>${item.user_id || 'N/A'}</td>
+                        <td class="prompt-cell" title="${item.prompt || ''}">${item.prompt || 'N/A'}</td>
+                        <td class="response-cell" title="${item.response || ''}">${item.response || 'N/A'}</td>
+                        <td class="metric-cell">${item.tokens_in || 0}</td>
+                        <td class="metric-cell">${item.tokens_out || 0}</td>
+                        <td class="metric-cell">${item.latency_ms || 0}</td>
+                        <td class="metric-cell">${item.throughput_tokens_per_sec?.toFixed(2) || '0.00'}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
             }
 
             showError(message) {
                 const errorDiv = document.getElementById('errorMessage');
+                const resultContent = document.getElementById('resultContent');
+                const welcomeScreen = document.getElementById('welcomeScreen');
+                
                 errorDiv.textContent = message;
                 errorDiv.classList.add('show');
                 
+                // Hide result content and show welcome screen
+                resultContent.classList.remove('show');
+                welcomeScreen.style.display = 'flex';
+                
                 // Hide loading
                 document.querySelector('.loading').classList.remove('show');
+                
+                // Auto-hide error after 5 seconds
+                setTimeout(() => {
+                    errorDiv.classList.remove('show');
+                }, 5000);
             }
 
             bindEvents() {
-                // Handle iframe load errors
-                const iframe = document.getElementById('contentIframe');
-                iframe.addEventListener('error', () => {
-                    this.showError('Failed to load test result details');
-                });
+                // Add any additional event handlers here if needed
+                // Note: iframe error handling removed since we're no longer using iframe
             }
         }
 
