@@ -163,20 +163,20 @@
             margin: 20px 0;
         }
 
-        /* Line chart specific styling */
-        .charts-css.line {
+        /* Bar chart specific styling */
+        .charts-css.bar {
             background: linear-gradient(to top, #f8f9fa 0%, #f8f9fa 100%);
         }
 
-        .charts-css.line tbody tr td {
+        .charts-css.bar tbody tr td {
             position: relative;
         }
 
-        .charts-css.line tbody tr td .data {
+        .charts-css.bar tbody tr td .data {
             position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
             background: #3498db;
             color: white;
             padding: 4px 8px;
@@ -185,6 +185,41 @@
             font-weight: bold;
             white-space: nowrap;
             z-index: 10;
+        }
+
+        /* Motion effects */
+        .charts-css.bar tbody tr td {
+            animation: barGrowIn 0.8s ease-out;
+            animation-fill-mode: both;
+            animation-delay: calc(var(--animation-delay, 0) * 0.1s);
+        }
+
+        @keyframes barGrowIn {
+            from {
+                width: 0;
+                opacity: 0;
+            }
+            to {
+                width: calc(100% * var(--size, 1));
+                opacity: 1;
+            }
+        }
+
+        .charts-css.bar tbody tr td .data {
+            animation: dataFadeIn 0.6s ease-out;
+            animation-fill-mode: both;
+            animation-delay: calc(var(--animation-delay, 0) * 0.1s + 0.4s);
+        }
+
+        @keyframes dataFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50%) translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0);
+            }
         }
 
         /* Mobile responsive for charts */
@@ -510,7 +545,7 @@
                                 <div class="chart-container">
                                     <h3 class="chart-title">Prompt Processing Speed per Batch</h3>
                                     <p class="chart-subtitle">X: Batches (B), Y: (S_PP t/s) / B</p>
-                                    <table id="promptChart" class="charts-css line show-labels show-primary-axis">
+                                    <table id="promptChart" class="charts-css bar show-labels show-primary-axis show-4-secondary-axes">
                                         <caption>Prompt Processing Speed per Batch</caption>
                                         <thead>
                                             <tr>
@@ -527,7 +562,7 @@
                                 <div class="chart-container">
                                     <h3 class="chart-title">Text Generation Speed per Batch</h3>
                                     <p class="chart-subtitle">X: Batches (B), Y: (S_TG t/s) / B</p>
-                                    <table id="generationChart" class="charts-css line show-labels show-primary-axis">
+                                    <table id="generationChart" class="charts-css bar show-labels show-primary-axis show-4-secondary-axes">
                                         <caption>Text Generation Speed per Batch</caption>
                                         <thead>
                                             <tr>
@@ -1006,12 +1041,9 @@
                     const row = document.createElement('tr');
                     const normalizedValue = maxSpeed > 0 ? item.promptSpeedPerBatch / maxSpeed : 0;
                     
-                    // For line charts, we need both start and end values to connect points
-                    const prevValue = index > 0 ? chartData[index - 1].promptSpeedPerBatch / maxSpeed : 0;
-                    
                     row.innerHTML = `
                         <th scope="row">${item.batches}</th>
-                        <td style="--start: ${prevValue.toFixed(3)}; --end: ${normalizedValue.toFixed(3)}; --size: ${normalizedValue.toFixed(3)};">
+                        <td style="--size: ${normalizedValue.toFixed(3)}; --animation-delay: ${index};">
                             <span class="data">${item.promptSpeedPerBatch.toFixed(2)}</span>
                         </td>
                     `;
@@ -1033,12 +1065,9 @@
                     const row = document.createElement('tr');
                     const normalizedValue = maxSpeed > 0 ? item.generationSpeedPerBatch / maxSpeed : 0;
                     
-                    // For line charts, we need both start and end values to connect points
-                    const prevValue = index > 0 ? chartData[index - 1].generationSpeedPerBatch / maxSpeed : 0;
-                    
                     row.innerHTML = `
                         <th scope="row">${item.batches}</th>
-                        <td style="--start: ${prevValue.toFixed(3)}; --end: ${normalizedValue.toFixed(3)}; --size: ${normalizedValue.toFixed(3)};">
+                        <td style="--size: ${normalizedValue.toFixed(3)}; --animation-delay: ${index};">
                             <span class="data">${item.generationSpeedPerBatch.toFixed(2)}</span>
                         </td>
                     `;
