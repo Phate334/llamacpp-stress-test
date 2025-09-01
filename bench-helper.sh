@@ -66,9 +66,11 @@ collect_env_info() {
     cat > "$output_file" << EOF
 {
   "timestamp": "$(date -Iseconds)",
-  "bench_executable": "$BENCH_EXECUTABLE",
-  "bench_arguments": [$(printf '"%s",' "${bench_args[@]}" | sed 's/,$//')],
-  "llamacpp_version": "$llamacpp_version",
+  "execution_params": {
+    "bench_executable": "$BENCH_EXECUTABLE",
+    "bench_arguments": [$(printf '"%s",' "${bench_args[@]}" | sed 's/,$//')],
+    "llamacpp_version": "$llamacpp_version"
+  },
 EOF
 
     # Get GPU information using nvidia-smi

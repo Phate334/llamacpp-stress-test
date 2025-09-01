@@ -174,6 +174,58 @@
             text-align: right;
         }
 
+        .env-item-args .env-value {
+            text-align: left;
+            width: 100%;
+        }
+
+        .args-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .arg-pair {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 6px;
+            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85em;
+        }
+
+        .arg-key {
+            color: #1976d2;
+            font-weight: 600;
+        }
+
+        .arg-value {
+            color: #424242;
+            background: #fff;
+            border-radius: 3px;
+            padding: 2px 4px;
+        }
+
+        .arg-flag {
+            background: #f3e5f5;
+            border: 1px solid #ce93d8;
+            border-radius: 6px;
+            padding: 4px 8px;
+            color: #7b1fa2;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .arg-empty {
+            color: #9e9e9e;
+            font-style: italic;
+        }
+
         .output-table {
             width: 100%;
             border-collapse: collapse;
@@ -658,6 +710,7 @@
 
                 // Group environment data into cards
                 const sections = [
+                    { title: 'Execution Parameters', key: 'execution_params', icon: '🚀' },
                     { title: 'GPU Information', key: 'gpu_info', icon: '🎮' },
                     { title: 'CPU Information', key: 'cpu_info', icon: '⚡' },
                     { title: 'System Information', key: 'system_info', icon: '💻' },
@@ -680,9 +733,19 @@
                 let items = '';
                 for (const [key, value] of Object.entries(data)) {
                     const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    const displayValue = typeof value === 'object' ? JSON.stringify(value) : value;
+                    let displayValue;
+                    
+                    // Special formatting for bench_arguments
+                    if (key === 'bench_arguments' && Array.isArray(value)) {
+                        displayValue = this.formatBenchArguments(value);
+                    } else if (typeof value === 'object') {
+                        displayValue = JSON.stringify(value);
+                    } else {
+                        displayValue = value;
+                    }
+                    
                     items += `
-                        <div class="env-item">
+                        <div class="env-item ${key === 'bench_arguments' ? 'env-item-args' : ''}">
                             <span class="env-label">${displayKey}:</span>
                             <span class="env-value">${displayValue}</span>
                         </div>
@@ -695,6 +758,35 @@
                 `;
 
                 return card;
+            }
+
+            formatBenchArguments(args) {
+                if (!args || args.length === 0) {
+                    return '<span class="arg-empty">No arguments</span>';
+                }
+                
+                let formatted = '<div class="args-container">';
+                let i = 0;
+                
+                while (i < args.length) {
+                    const arg = args[i];
+                    
+                    // Check if this is a flag that takes a value
+                    if (arg.startsWith('-') && i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                        // This is a key-value pair
+                        const key = arg;
+                        const value = args[i + 1];
+                        formatted += `<span class="arg-pair"><span class="arg-key">${key}</span> <span class="arg-value">${value}</span></span>`;
+                        i += 2;
+                    } else {
+                        // This is a standalone flag
+                        formatted += `<span class="arg-flag">${arg}</span>`;
+                        i += 1;
+                    }
+                }
+                
+                formatted += '</div>';
+                return formatted;
             }
 
             displayOutputData(outputData) {
