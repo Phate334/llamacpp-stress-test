@@ -363,16 +363,16 @@
                                 <table id="outputTable" class="output-table">
                                     <thead>
                                         <tr>
-                                            <th style="text-align: right;">PP</th>
-                                            <th style="text-align: right;">TG</th>
-                                            <th style="text-align: right;">B</th>
-                                            <th style="text-align: right;">N_KV</th>
-                                            <th style="text-align: right;">T_PP s</th>
-                                            <th style="text-align: right;">S_PP t/s</th>
-                                            <th style="text-align: right;">T_TG s</th>
-                                            <th style="text-align: right;">S_TG t/s</th>
-                                            <th style="text-align: right;">T s</th>
-                                            <th style="text-align: right;">S t/s</th>
+                                            <th style="text-align: right;" title="prompt tokens per batch">PP</th>
+                                            <th style="text-align: right;" title="generated tokens per batch">TG</th>
+                                            <th style="text-align: right;" title="number of batches">B</th>
+                                            <th style="text-align: right;" title="required KV cache size">N_KV</th>
+                                            <th style="text-align: right;" title="prompt processing time (i.e. time to first token)">T_PP s</th>
+                                            <th style="text-align: right;" title="prompt processing speed ((B*PP)/T_PP or PP/T_PP)">S_PP t/s</th>
+                                            <th style="text-align: right;" title="time to generate all batches">T_TG s</th>
+                                            <th style="text-align: right;" title="text generation speed ((B*TG)/T_TG)">S_TG t/s</th>
+                                            <th style="text-align: right;" title="total time">T s</th>
+                                            <th style="text-align: right;" title="total speed (i.e. all tokens / total time)">S t/s</th>
                                         </tr>
                                     </thead>
                                     <tbody>
