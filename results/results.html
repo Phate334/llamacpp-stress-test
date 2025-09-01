@@ -125,6 +125,76 @@
             margin-bottom: 30px;
         }
 
+        .charts-section {
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .chart-container {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .chart-subtitle {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .charts-css {
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        /* Line chart specific styling */
+        .charts-css.line {
+            background: linear-gradient(to top, #f8f9fa 0%, #f8f9fa 100%);
+        }
+
+        .charts-css.line tbody tr td {
+            position: relative;
+        }
+
+        .charts-css.line tbody tr td .data {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        /* Mobile responsive for charts */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
         .section-title {
             font-size: 1.5em;
             color: #2c3e50;
@@ -433,6 +503,45 @@
                                 </table>
                             </div>
                         </div>
+                        
+                        <div class="charts-section">
+                            <h2 class="section-title">📈 Performance Charts</h2>
+                            <div class="charts-grid">
+                                <div class="chart-container">
+                                    <h3 class="chart-title">Prompt Processing Speed per Batch</h3>
+                                    <p class="chart-subtitle">X: Batches (B), Y: (S_PP t/s) / B</p>
+                                    <table id="promptChart" class="charts-css line show-labels show-primary-axis">
+                                        <caption>Prompt Processing Speed per Batch</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>Batches</th>
+                                                <th>Speed per Batch</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Chart data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="chart-container">
+                                    <h3 class="chart-title">Text Generation Speed per Batch</h3>
+                                    <p class="chart-subtitle">X: Batches (B), Y: (S_TG t/s) / B</p>
+                                    <table id="generationChart" class="charts-css line show-labels show-primary-axis">
+                                        <caption>Text Generation Speed per Batch</caption>
+                                        <thead>
+                                            <tr>
+                                                <th>Batches</th>
+                                                <th>Speed per Batch</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Chart data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -636,6 +745,7 @@
                     // Display the data
                     this.displayEnvironmentData(envData);
                     this.displayOutputData(outputData);
+                    this.displayCharts(outputData);
 
                     // Show content
                     loadingContent.style.display = 'none';
@@ -830,6 +940,107 @@
                         <td class="metric-cell">${sTg}</td>
                         <td class="metric-cell">${t}</td>
                         <td class="metric-cell">${s}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+
+            displayCharts(outputData) {
+                if (!outputData || outputData.length === 0) {
+                    // Hide charts section if no data
+                    const chartsSection = document.querySelector('.charts-section');
+                    if (chartsSection) {
+                        chartsSection.style.display = 'none';
+                    }
+                    return;
+                }
+
+                // Show charts section
+                const chartsSection = document.querySelector('.charts-section');
+                if (chartsSection) {
+                    chartsSection.style.display = 'block';
+                }
+
+                // Process data for charts
+                const chartData = this.processChartData(outputData);
+                
+                // Generate both charts
+                this.generatePromptChart(chartData);
+                this.generateGenerationChart(chartData);
+            }
+
+            processChartData(outputData) {
+                const data = [];
+                
+                outputData.forEach((item) => {
+                    const b = item.pl !== undefined ? parseFloat(item.pl) : 0; // batches
+                    const sPp = item.speed_pp !== undefined ? parseFloat(item.speed_pp) : 0; // prompt processing speed
+                    const sTg = item.speed_tg !== undefined ? parseFloat(item.speed_tg) : 0; // text generation speed
+                    
+                    if (b > 0) { // Only include valid batch data
+                        data.push({
+                            batches: b,
+                            promptSpeedPerBatch: sPp / b,
+                            generationSpeedPerBatch: sTg / b
+                        });
+                    }
+                });
+
+                // Sort by batches for proper line chart
+                data.sort((a, b) => a.batches - b.batches);
+                
+                return data;
+            }
+
+            generatePromptChart(chartData) {
+                const tbody = document.querySelector('#promptChart tbody');
+                tbody.innerHTML = '';
+
+                if (chartData.length === 0) return;
+
+                // Find max value for normalization
+                const maxSpeed = Math.max(...chartData.map(d => d.promptSpeedPerBatch));
+
+                chartData.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    const normalizedValue = maxSpeed > 0 ? item.promptSpeedPerBatch / maxSpeed : 0;
+                    
+                    // For line charts, we need both start and end values to connect points
+                    const prevValue = index > 0 ? chartData[index - 1].promptSpeedPerBatch / maxSpeed : 0;
+                    
+                    row.innerHTML = `
+                        <th scope="row">${item.batches}</th>
+                        <td style="--start: ${prevValue.toFixed(3)}; --end: ${normalizedValue.toFixed(3)}; --size: ${normalizedValue.toFixed(3)};">
+                            <span class="data">${item.promptSpeedPerBatch.toFixed(2)}</span>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+
+            generateGenerationChart(chartData) {
+                const tbody = document.querySelector('#generationChart tbody');
+                tbody.innerHTML = '';
+
+                if (chartData.length === 0) return;
+
+                // Find max value for normalization
+                const maxSpeed = Math.max(...chartData.map(d => d.generationSpeedPerBatch));
+
+                chartData.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    const normalizedValue = maxSpeed > 0 ? item.generationSpeedPerBatch / maxSpeed : 0;
+                    
+                    // For line charts, we need both start and end values to connect points
+                    const prevValue = index > 0 ? chartData[index - 1].generationSpeedPerBatch / maxSpeed : 0;
+                    
+                    row.innerHTML = `
+                        <th scope="row">${item.batches}</th>
+                        <td style="--start: ${prevValue.toFixed(3)}; --end: ${normalizedValue.toFixed(3)}; --size: ${normalizedValue.toFixed(3)};">
+                            <span class="data">${item.generationSpeedPerBatch.toFixed(2)}</span>
+                        </td>
                     `;
                     
                     tbody.appendChild(row);
