@@ -52,12 +52,23 @@ collect_env_info() {
     
     echo "Collecting environment information..."
     
+    # Retrieve llama.cpp version information
+    local llamacpp_version=""
+    if [ -x "$BENCH_EXECUTABLE" ]; then
+        # Extract the line starting with 'version:' and remove the leading label
+        llamacpp_version=$("$BENCH_EXECUTABLE" --version 2>&1 | awk '/^version:/{sub(/^version: /,""); print; exit}') || true
+    fi
+    if [ -z "$llamacpp_version" ]; then
+        llamacpp_version="Unknown"
+    fi
+    
     # Create JSON structure
     cat > "$output_file" << EOF
 {
   "timestamp": "$(date -Iseconds)",
   "bench_executable": "$BENCH_EXECUTABLE",
   "bench_arguments": [$(printf '"%s",' "${bench_args[@]}" | sed 's/,$//')],
+  "llamacpp_version": "$llamacpp_version",
 EOF
 
     # Get GPU information using nvidia-smi

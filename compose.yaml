@@ -1,21 +1,19 @@
 services:
-  app:
+  test:
     image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6322
     volumes:
-      - ./models:/app/models
+      - ./model-cache:/root/.cache/llama.cpp
       - ./results:/app/results
       - ./bench-helper.sh:/app/bench-helper.sh
     entrypoint: ["/app/bench-helper.sh"]
     command: [
-      "-m", "/app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf",
+      "-hf", "lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0",
       "-ngl", "99",
       "-c", "4096",
       "-fa",
-      "-ctk", "q8_0",
-      "-ctv", "q8_0",
       "-npp", "256",
       "-ntg", "128",
-      "-npl", "1,2,3,4,5"
+      "-npl", "1,2,3"
     ]
     deploy:
       resources:
