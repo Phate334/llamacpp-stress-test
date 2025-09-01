@@ -8,32 +8,49 @@ Use this tool via Docker containers by mounting the script into the official lla
 
 ### Docker Compose (recommended)
 
-Edit `compose.yaml` if needed, then run:
+Edit `compose.yaml` if needed, then run the benchmark service (service name: `test`):
 
 ```bash
-docker compose up app
+docker compose up test
 ```
 
-Results will be saved under `results/YYYYMMDD_HHMMSS/`. To browse past runs with a simple HTTP server:
+Results appear in `results/YYYYMMDD_HHMMSS/`.
+
+To serve historical results via a simple HTTP server:
 
 ```bash
 docker compose up server
 # Open http://localhost:8000
 ```
 
-### One-line Docker run (matches compose.yaml)
+Key points from the provided `compose.yaml`:
+
+- Image: `ghcr.io/ggml-org/llama.cpp:full-cuda-b6322`
+- Uses Hugging Face repo download (`-hf lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0`) instead of a pre-mounted model file
+- Caches downloaded models under a writable host directory mapped to `/root/.cache/llama.cpp`
+- Limits parallel prompt list to `-npl 1,2,3` in the example
+
+### One-line Docker run (equivalent to compose.yaml `test` service)
 
 ```bash
 docker run --rm --gpus all \
-  -v "$(pwd)/models:/app/models" \
+  -v "$(pwd)/model-cache:/root/.cache/llama.cpp" \
   -v "$(pwd)/results:/app/results" \
   -v "$(pwd)/bench-helper.sh:/app/bench-helper.sh" \
   --entrypoint /app/bench-helper.sh \
-  ghcr.io/ggml-org/llama.cpp:full-cuda-b6055 \
-  -m /app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf \
-  -ngl 99 -c 4096 -fa -ctk q8_0 -ctv q8_0 \
-  -npp 256 -ntg 128 -npl 1,2,3,4,5
+  ghcr.io/ggml-org/llama.cpp:full-cuda-b6322 \
+  -hf lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0 \
+  -ngl 99 -c 4096 -fa \
+  -npp 256 -ntg 128 -npl 1,2,3
 ```
+
+If you prefer mounting a local model instead of `-hf`, replace the `-hf ...` argument with something like:
+
+```bash
+-m /app/models/your-model.gguf
+```
+
+and mount your host `models` directory: `-v "$(pwd)/models:/app/models"`.
 
 ### Script behavior and options
 

@@ -8,32 +8,49 @@
 
 ### 使用 Docker Compose（建議）
 
-如有需要可編輯 `compose.yaml`，然後執行：
+如有需要可編輯 `compose.yaml`，然後執行（服務名稱：`test`）：
 
 ```bash
-docker compose up app
+docker compose up test
 ```
 
-結果會保存在 `results/YYYYMMDD_HHMMSS/`。要用簡單的 HTTP 伺服器瀏覽過往結果：
+結果會保存在 `results/YYYYMMDD_HHMMSS/`。
+
+若要用簡單的 HTTP 伺服器瀏覽歷史結果：
 
 ```bash
 docker compose up server
 # 開啟 http://localhost:8000
 ```
 
-### 一行指令執行 Docker（與 compose.yaml 一致）
+`compose.yaml` 重點：
+
+- 映像：`ghcr.io/ggml-org/llama.cpp:full-cuda-b6322`
+- 透過 `-hf lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0` 直接下載 Hugging Face 模型，而非預先掛載的本地檔案
+- 下載的模型快取掛載到主機目錄 `model-cache`，容器內路徑 `/root/.cache/llama.cpp`
+- 範例平行 prompt 設定：`-npl 1,2,3`
+
+### 一行指令執行 Docker（等同 compose.yaml 的 `test` 服務）
 
 ```bash
 docker run --rm --gpus all \
-  -v "$(pwd)/models:/app/models" \
+  -v "$(pwd)/model-cache:/root/.cache/llama.cpp" \
   -v "$(pwd)/results:/app/results" \
   -v "$(pwd)/bench-helper.sh:/app/bench-helper.sh" \
   --entrypoint /app/bench-helper.sh \
-  ghcr.io/ggml-org/llama.cpp:full-cuda-b6055 \
-  -m /app/models/gemma-3-1b-it-UD-Q4_K_XL.gguf \
-  -ngl 99 -c 4096 -fa -ctk q8_0 -ctv q8_0 \
-  -npp 256 -ntg 128 -npl 1,2,3,4,5
+  ghcr.io/ggml-org/llama.cpp:full-cuda-b6322 \
+  -hf lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0 \
+  -ngl 99 -c 4096 -fa \
+  -npp 256 -ntg 128 -npl 1,2,3
 ```
+
+若改用本地模型，將 `-hf ...` 改成：
+
+```bash
+-m /app/models/你的模型.gguf
+```
+
+並新增掛載：`-v "$(pwd)/models:/app/models"`。
 
 ### 腳本行為與選項
 
