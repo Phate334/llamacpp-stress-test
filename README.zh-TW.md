@@ -86,4 +86,5 @@ chmod +x bench-helper.sh
 
 ## 致謝
 
-作為 [llama.cpp](https://github.com/ggml-org/llama.cpp) `batched-bench` 工具的包裝器構建。
+- 作為 [llama.cpp](https://github.com/ggml-org/llama.cpp) `batched-bench` 工具的包裝器構建。
+- 使用 [charts.css](https://github.com/ChartsCSS/charts.css) 展示圖表。

@@ -87,4 +87,5 @@ chmod +x bench-helper.sh
 
 ## Acknowledgments
 
-Built as a wrapper for [llama.cpp](https://github.com/ggml-org/llama.cpp) `batched-bench` tool.
+- Built as a wrapper for [llama.cpp](https://github.com/ggml-org/llama.cpp) `batched-bench` tool.
+- Uses [charts.css](https://github.com/ChartsCSS/charts.css) to display charts.
