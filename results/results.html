@@ -543,14 +543,14 @@
                             <h2 class="section-title">📈 Performance Charts</h2>
                             <div class="charts-grid">
                                 <div class="chart-container">
-                                    <h3 class="chart-title">Prompt Processing Speed per Batch</h3>
-                                    <p class="chart-subtitle">X: Batches (B), Y: (S_PP t/s) / B</p>
-                                    <table id="promptChart" class="charts-css bar show-labels show-primary-axis show-4-secondary-axes">
-                                        <caption>Prompt Processing Speed per Batch</caption>
+                                    <h3 class="chart-title">Prompt Processing Speed</h3>
+                                    <p class="chart-subtitle">X: Batches (B), Y: S_PP t/s</p>
+                                    <table id="promptChart" class="charts-css line show-labels show-primary-axis show-4-secondary-axes">
+                                        <caption>Prompt Processing Speed</caption>
                                         <thead>
                                             <tr>
                                                 <th>Batches</th>
-                                                <th>Speed per Batch</th>
+                                                <th>Speed</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -560,14 +560,14 @@
                                 </div>
                                 
                                 <div class="chart-container">
-                                    <h3 class="chart-title">Text Generation Speed per Batch</h3>
-                                    <p class="chart-subtitle">X: Batches (B), Y: (S_TG t/s) / B</p>
-                                    <table id="generationChart" class="charts-css bar show-labels show-primary-axis show-4-secondary-axes">
-                                        <caption>Text Generation Speed per Batch</caption>
+                                    <h3 class="chart-title">Text Generation Speed</h3>
+                                    <p class="chart-subtitle">X: Batches (B), Y: S_TG t/s</p>
+                                    <table id="generationChart" class="charts-css line show-labels show-primary-axis show-4-secondary-axes">
+                                        <caption>Text Generation Speed</caption>
                                         <thead>
                                             <tr>
                                                 <th>Batches</th>
-                                                <th>Speed per Batch</th>
+                                                <th>Speed</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1016,8 +1016,8 @@
                     if (b > 0) { // Only include valid batch data
                         data.push({
                             batches: b,
-                            promptSpeedPerBatch: sPp / b,
-                            generationSpeedPerBatch: sTg / b
+                            promptSpeed: sPp,
+                            generationSpeed: sTg
                         });
                     }
                 });
@@ -1035,16 +1035,25 @@
                 if (chartData.length === 0) return;
 
                 // Find max value for normalization
-                const maxSpeed = Math.max(...chartData.map(d => d.promptSpeedPerBatch));
+                const maxSpeed = Math.max(...chartData.map(d => d.promptSpeed));
 
                 chartData.forEach((item, index) => {
                     const row = document.createElement('tr');
-                    const normalizedValue = maxSpeed > 0 ? item.promptSpeedPerBatch / maxSpeed : 0;
+                    const normalizedValue = maxSpeed > 0 ? item.promptSpeed / maxSpeed : 0;
+                    
+                    // For line charts, we need to set both start and end values if we want to connect points
+                    // For the first point, start = end = current value
+                    // For subsequent points, start = previous value, end = current value
+                    let startValue = normalizedValue;
+                    if (index > 0) {
+                        const prevValue = maxSpeed > 0 ? chartData[index - 1].promptSpeed / maxSpeed : 0;
+                        startValue = prevValue;
+                    }
                     
                     row.innerHTML = `
                         <th scope="row">${item.batches}</th>
-                        <td style="--size: ${normalizedValue.toFixed(3)}; --animation-delay: ${index};">
-                            <span class="data">${item.promptSpeedPerBatch.toFixed(2)}</span>
+                        <td style="--start: ${startValue.toFixed(3)}; --end: ${normalizedValue.toFixed(3)}; --animation-delay: ${index};">
+                            <span class="data">${item.promptSpeed.toFixed(2)}</span>
                         </td>
                     `;
                     
@@ -1059,16 +1068,25 @@
                 if (chartData.length === 0) return;
 
                 // Find max value for normalization
-                const maxSpeed = Math.max(...chartData.map(d => d.generationSpeedPerBatch));
+                const maxSpeed = Math.max(...chartData.map(d => d.generationSpeed));
 
                 chartData.forEach((item, index) => {
                     const row = document.createElement('tr');
-                    const normalizedValue = maxSpeed > 0 ? item.generationSpeedPerBatch / maxSpeed : 0;
+                    const normalizedValue = maxSpeed > 0 ? item.generationSpeed / maxSpeed : 0;
+                    
+                    // For line charts, we need to set both start and end values if we want to connect points
+                    // For the first point, start = end = current value
+                    // For subsequent points, start = previous value, end = current value
+                    let startValue = normalizedValue;
+                    if (index > 0) {
+                        const prevValue = maxSpeed > 0 ? chartData[index - 1].generationSpeed / maxSpeed : 0;
+                        startValue = prevValue;
+                    }
                     
                     row.innerHTML = `
                         <th scope="row">${item.batches}</th>
-                        <td style="--size: ${normalizedValue.toFixed(3)}; --animation-delay: ${index};">
-                            <span class="data">${item.generationSpeedPerBatch.toFixed(2)}</span>
+                        <td style="--start: ${startValue.toFixed(3)}; --end: ${normalizedValue.toFixed(3)}; --animation-delay: ${index};">
+                            <span class="data">${item.generationSpeed.toFixed(2)}</span>
                         </td>
                     `;
                     
