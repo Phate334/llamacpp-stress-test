@@ -1,27 +1,19 @@
 services:
   test:
-    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6322
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b6375
     volumes:
       - ./model-cache:/root/.cache/llama.cpp
       - ./results:/app/results
       - ./bench-helper.sh:/app/bench-helper.sh
-    entrypoint: ["/app/bench-helper.sh"]
-    command: [
-      "-hf", "lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0",
-      "-ngl", "99",
-      "-c", "4096",
-      "-fa",
-      "-npp", "256",
-      "-ntg", "128",
-      "-npl", "1,2,3"
-    ]
+    entrypoint: [ "/app/bench-helper.sh" ]
+    command: [ "-hf", "lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0", "-ngl", "99", "-c", "4096", "-fa", "on", "-npp", "256", "-ntg", "128", "-npl", "1,2,3" ]
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["0"]
-              capabilities: [gpu]
+              device_ids: [ "0" ]
+              capabilities: [ gpu ]
 
   server:
     image: python:3.13-slim
