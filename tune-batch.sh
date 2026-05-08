@@ -10,7 +10,7 @@ REPETITIONS="3"
 OUTPUT_DIR=""
 
 DEFAULT_BENCH_ARGS=(
-    -hf "lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0"
+    -hf "unsloth/gemma-4-E2B-it-GGUF:Q4_K_M"
     -ngl "99"
     -fa "1"
     -ctk "f16"
@@ -43,7 +43,7 @@ Options:
   -h, --help                 show this help
 
 If no extra llama-bench args are provided after "--", this script uses:
-  -hf lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0
+  -hf unsloth/gemma-4-E2B-it-GGUF:Q4_K_M
   -ngl 99 -fa 1 -ctk f16 -ctv f16 -p 512 -n 128
 
 Managed by this script:
@@ -56,7 +56,7 @@ Examples:
   ./tune-batch.sh
 
   ./tune-batch.sh -b 1024,2048,4096 -u 256,512,1024 -- \
-    -hf lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0 \
+    -hf unsloth/gemma-4-E2B-it-GGUF:Q4_K_M \
     -ngl 99 -fa 1 -ctk f16 -ctv f16 -p 512 -n 128
 EOF
 }

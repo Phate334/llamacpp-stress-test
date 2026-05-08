@@ -1,12 +1,12 @@
 services:
   test:
-    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b8576
+    image: ghcr.io/ggml-org/llama.cpp:full-cuda-b9070
     volumes:
       - ./model-cache:/root/.cache
       - ./results:/app/results
       - ./bench-helper.sh:/app/bench-helper.sh
     entrypoint: [ "/app/bench-helper.sh" ]
-    command: [ "-hf", "lmstudio-community/gemma-3-1B-it-qat-GGUF:Q4_0", "-ngl", "99", "-c", "4096", "-fa", "on", "--fit", "off", "-npp", "256", "-ntg", "128", "-npl", "1,2,3" ]
+    command: [ "-hf", "unsloth/gemma-4-E2B-it-GGUF:Q4_K_M", "-c", "4096", "--fit", "off", "-npp", "256", "-ntg", "128", "-npl", "1,2,3" ]
     devices:
       - "nvidia.com/gpu=all"
 
