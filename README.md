@@ -66,7 +66,7 @@ The viewer lives at `results/results.html` and browses all timestamped result di
 
 ## Batch Tuning
 
-Use [`tune-batch.sh`](/home/phate/llamacpp-stress-test/tune-batch.sh) to sweep `-b` and `-ub` values:
+Use [`tune-batch.sh`](./tune-batch.sh) to sweep `-b` and `-ub` values:
 
 ```bash
 ./tune-batch.sh
@@ -96,4 +96,4 @@ chmod +x bench-helper.sh tune-batch.sh
 ## Acknowledgments
 
 - Built around [llama.cpp](https://github.com/ggml-org/llama.cpp) `batched-bench`
-- Uses [charts.css](https://github.com/ChartsCSS/charts.css) for charts
+- Uses dependency-free SVG charts in the results viewer

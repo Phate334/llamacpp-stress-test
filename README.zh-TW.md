@@ -66,7 +66,7 @@ docker run --rm --gpus all \
 
 ## Batch 調參
 
-使用 [`tune-batch.sh`](/home/phate/llamacpp-stress-test/tune-batch.sh) 掃描 `-b` 和 `-ub`：
+使用 [`tune-batch.sh`](./tune-batch.sh) 掃描 `-b` 和 `-ub`：
 
 ```bash
 ./tune-batch.sh
@@ -96,4 +96,4 @@ chmod +x bench-helper.sh tune-batch.sh
 ## 致謝
 
 - 基於 [llama.cpp](https://github.com/ggml-org/llama.cpp) `batched-bench`
-- 使用 [charts.css](https://github.com/ChartsCSS/charts.css) 顯示圖表
+- 結果檢視器使用無額外相依的 SVG 圖表
